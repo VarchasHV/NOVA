@@ -16,6 +16,7 @@ uv run python -m evaluation.run_heldout --ckpt runs/full/best.pt
 uv run python -m training.export --ckpt runs/full/best.pt     # writes submission/weights/model.pt
 uv run python -m evaluation.profile_latency
 uv run python tools/viz_topdown.py --tier 3 --out episode.png
+uv run python tools/demo.py all                              # demo pages in runs/demo/ (replay, killcam, deaths, curves)
 uv run python validate.py
 ```
 

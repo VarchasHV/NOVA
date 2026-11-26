@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streamed Mind killcam</title><style>/*STYLE*/</style></head>
+<body><main>
+  <h1>Killcam: what the agent sensed before it died</h1>
+  <div class="muted" id="sub"></div>
+  <div class="controls"><button id="play">Play</button><input id="scrub" type="range" min="0" value="0" aria-label="decision">
+    <select id="speed" aria-label="speed"><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option></select></div>
+  <div class="cols">
+    <div class="card"><h2>Agent's view: 64 rays and visible things (facing up; nearby distances magnified)</h2><canvas id="ego"></canvas>
+      <div class="legend"><span><i class="sw" style="background:var(--wall)"></i>wall</span><span><i class="sw" style="background:var(--door)"></i>door</span><span><i class="sw" style="background:var(--locked)"></i>locked door</span><span><i class="sw" style="background:var(--magenta)"></i>enemy or projectile</span><span><i class="sw" style="background:var(--aqua)"></i>item</span><span>ring size = influence on the decision</span></div></div>
+    <div>
+      <div class="card"><div class="big" id="now"></div><div class="keys" id="buttons" style="margin-top:8px"></div><table id="probs" style="margin-top:8px"></table></div>
+      <div class="card"><h2>Which visible thing matters most</h2><table id="things"></table>
+        <div class="muted">Influence: how much the action probabilities change if that one thing is removed from the observation.</div></div>
+      <div class="card"><h2>Where it happened (true map)</h2><canvas id="mini"></canvas></div>
+    </div>
+  </div>
+</main>
+<script>
+const D = __DATA__;
+/*COMMON*/
+const F = D.frames, RAY = ["--grid", "--wall", "--door", "--locked", "--magenta", "--aqua"];
+$("sub").textContent = `${D.checkpoint} · ${D.map} · ${D.selection}`;
+const hostile = n => n.startsWith("enemy") || n === "projectile";
+const NAMES = {enemy_melee: "melee enemy", enemy_hitscan: "gun enemy", enemy_projectile: "fireball-throwing enemy", projectile: "incoming shot"};
+const label = n => NAMES[n] || n;
+const peak = Math.max(...F.flatMap(f => f.en.map(e => e[4])), 1e-6);
+function draw(t) {
+  const f = F[t];
+  let [g, w, h] = fit($("ego"), 0.85);
+  const cx = w / 2, cy = h * 0.56, radius = Math.min(w / 2, h * 0.54) - 4;
+  const reach = d => Math.sqrt(Math.min(d, 1024) / 1024) * radius;  // square-root scale: close things get more room
+  // bearing is counter-clockwise from straight ahead; screen "ahead" is up
+  const at = (bearing, dist) => [cx - Math.sin(bearing) * reach(dist), cy - Math.cos(bearing) * reach(dist)];
+  g.strokeStyle = css("--grid"); g.fillStyle = css("--muted"); g.font = "10px system-ui";
+  [64, 256, 1024].forEach(d => { g.beginPath(); g.arc(cx, cy, reach(d), 0, 7); g.stroke(); g.fillText(`${d}`, cx + 3, cy - reach(d) - 2); });
+  f.rd.forEach((d, i) => { const a = i * 2 * Math.PI / f.rd.length, [x, y] = at(a, d * 1024); g.strokeStyle = css(RAY[f.rt[i]]); g.globalAlpha = f.rt[i] > 1 ? .95 : .5; g.lineWidth = f.rt[i] > 1 ? 2 : 1; g.beginPath(); g.moveTo(cx, cy); g.lineTo(x, y); g.stroke(); g.globalAlpha = 1; dot(g, x, y, f.rt[i] ? 2.5 : 0, css(RAY[f.rt[i]])); });
+  g.strokeStyle = css("--muted"); g.setLineDash([3, 5]); [-1, 1].forEach(s => { g.beginPath(); g.moveTo(cx, cy); g.lineTo(...at(s * Math.PI / 4, 1024)); g.stroke(); }); g.setLineDash([]);
+  f.en.forEach(([name, dist, sin, cos, influence]) => {
+    const x = cx - sin * reach(dist), y = cy - cos * reach(dist), colour = css(hostile(name) ? "--magenta" : "--aqua"), share = influence / peak;
+    dot(g, x, y, 5, colour);
+    g.strokeStyle = colour; g.lineWidth = 2; g.globalAlpha = .35 + .65 * share; g.beginPath(); g.arc(x, y, 8 + 26 * share, 0, 7); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = css("--text"); g.font = "11px system-ui"; g.fillText(`${label(name)} ${Math.round(dist)}`, x + 9, y - 7);
+  });
+  g.fillStyle = css("--text"); g.beginPath(); g.moveTo(cx, cy - 11); g.lineTo(cx + 7, cy + 8); g.lineTo(cx - 7, cy + 8); g.fill();
+  if (t === F.length - 1) { cross(g, cx, cy, 22, css("--locked"), 6); g.fillStyle = css("--locked"); g.font = "bold 20px system-ui"; g.fillText("DIED", cx + 30, cy + 6); }
+  [g, w, h] = fit($("mini"), 0.75);
+  const P = projector(D.geo.bounds, w, h, 8);
+  drawMap(g, P, D.geo, f.o);
+  const here = D.path.length - F.length + t;
+  path(g, P, D.path, here, css("--blue"), 1.5, [], .8);
+  player(g, P, ...f.p, css("--text"), 8);
+  cross(g, ...P(...D.path[D.path.length - 1]), 6, css("--locked"));
+  $("now").textContent = `health ${f.h} · ${((F.length - 1 - t) * 4 / 35).toFixed(1)} s before death`;
+  $("buttons").innerHTML = buttonsHtml(f.b);
+  $("probs").innerHTML = ["attack", "use", "move forward"].map((n, i) => `<tr><td>chance to ${n}</td><td>${Math.round(100 * f.pr[i])}%</td></tr>`).join("");
+  $("things").innerHTML = "<tr><th>thing</th><th>distance</th><th>influence</th></tr>" + ([...f.en].sort((a, b) => b[4] - a[4]).slice(0, 6)
+    .map(e => `<tr><td>${label(e[0])}</td><td>${e[1]}</td><td>${e[4].toFixed(3)}</td></tr>`).join("") || "<tr><td>nothing in view</td></tr>");
+}
+transport(F.length, draw, 8.75);
+</script></body></html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streamed Mind all deaths</title><style>/*STYLE*/</style></head>
+<body><main>
+  <h1>Every attempt at once: early, middle and late training</h1>
+  <div class="muted" id="sub"></div>
+  <div class="controls"><button id="play">Play</button><input id="scrub" type="range" min="0" value="0" aria-label="time">
+    <select id="speed" aria-label="speed"><option value="1">1×</option><option value="3" selected>3×</option><option value="8">8×</option></select><span class="muted" id="clock"></span></div>
+  <div class="three" id="panels"></div>
+  <div class="legend"><span><i class="sw" style="background:var(--blue)"></i>attempt in progress</span><span><i class="sw" style="background:var(--locked)"></i>✕ died</span><span><i class="sw" style="background:var(--good)"></i>★ reached the exit</span><span><i class="sw" style="background:var(--muted)"></i>ran out of time</span></div>
+</main>
+<script>
+const D = __DATA__;
+/*COMMON*/
+$("sub").textContent = `${D.episodes} attempts per checkpoint on the same unseen map (${D.map}). Each attempt samples the policy differently.`;
+$("panels").innerHTML = D.panels.map((p, i) => `<div class="card"><h2>${p.stage}: ${p.label}</h2><canvas id="c${i}"></canvas><div id="s${i}" class="big"></div><div class="muted">final: died ${p.tally.death}, exit ${p.tally.exit}, timed out ${p.tally.time} · explored ${Math.round(100 * p.explored)}% · ${p.kills} kills per attempt</div></div>`).join("");
+const length = Math.max(...D.panels.flatMap(p => p.runs.map(r => r.path.length)));
+function draw(t) {
+  D.panels.forEach((panel, i) => {
+    const [g, w, h] = fit($("c" + i), 0.9), P = projector(D.geo.bounds, w, h, 8);
+    drawMap(g, P, D.geo);
+    let died = 0, exits = 0, alive = 0;
+    for (const r of panel.runs) {
+      const end = r.path.length - 1, now = Math.min(t, end), from = Math.max(0, now - 30);
+      path(g, P, r.path.slice(from, now + 1), now - from, css("--blue"), 1, [], t < end ? .35 : .08);
+      const [x, y] = P(...r.path[now]);
+      if (t < end) { alive++; dot(g, x, y, 3.5, css("--blue"), .85); }
+      else if (r.end === "death") { died++; cross(g, x, y, 5, css("--locked"), 2.5); }
+      else if (r.end === "exit") { exits++; star(g, x, y, 7, css("--good")); }
+      else dot(g, x, y, 3, css("--muted"), .8);
+    }
+    $("s" + i).textContent = `✕ ${died}   ★ ${exits}   alive ${alive}`;
+  });
+  $("clock").textContent = `${(t * 8 / 35).toFixed(0)} s of game time`;
+}
+transport(length, draw, 35 / 8 * 2);
+</script></body></html>
