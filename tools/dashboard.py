@@ -64,9 +64,29 @@ parts = ("success", "exit", "keys", "kill_frac", "level_open")
 step = max(1, len(log) // 240)
 picked = log[::step] + ([log[-1]] if log and (len(log) - 1) % step else [])
 out["log"] = [{k: v for k, v in r.items() if k in keep or k.split("/")[-1] in parts} for r in picked]
-out["eval"] = rows(run / "eval.jsonl")
+# Every held-out evaluation so far, marked with the training time it was taken at and whether it
+# became the new best (same rule as evaluation/run_heldout.py: higher score on the same suite).
+best = None
+for e in rows(run / "eval.jsonl"):
+    e["hours"] = next((r.get("hours") for r in log if r["step"] >= e["step"]), None)
+    e["new_best"] = best is None or e.get("suite") != best.get("suite") or e["score"] > best["score"]
+    if e["new_best"]:
+        best = e
+    out["eval"].append(e)
 if name and (run / "config.json").exists():
-    out["max_hours"] = json.loads((run / "config.json").read_text()).get("max_hours")
+    config = json.loads((run / "config.json").read_text())
+    out["max_hours"] = config.get("max_hours")
+    out["eval_minutes"] = config.get("eval_minutes")
+q = sh("pgrep", "-f", "evaluation.run_heldout")
+out["evaluating"] = bool(q and q.returncode == 0)
+snapshot = run / "ckpt_eval.pt"  # written when an evaluation starts
+if name and snapshot.exists():
+    out["last_eval_start"] = snapshot.stat().st_mtime
+errors = run / "eval.log"
+if name and errors.exists() and not out["evaluating"]:
+    tail = errors.read_text(errors="replace").strip().splitlines()[-25:]
+    if any(l.startswith("Traceback") for l in tail):
+        out["eval_error"] = tail[-1][:200]
 print(json.dumps(out))
 '''
 

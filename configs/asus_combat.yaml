@@ -1,0 +1,33 @@
+name: full_s2
+hypothesis: >
+  Paying more for kills, less for rushing out, and practising combat and the gauntlet more raises
+  tier 1 and tier 4 held-out scores without losing tiers 2 and 3. Compare with the `full` run.
+# Resumes the checkpoint of full_s2 (same model). Changed from configs/full.yaml on 2026-11-26.
+seed: 2
+total_steps: 300000000
+max_hours: 14
+num_workers: 10
+envs_per_worker: 8
+odom_warmup_updates: 60
+eval_minutes: 30
+eval_maps_per_tier: 6     # unchanged, so held-out scores stay comparable with the other run
+model:
+  memory: true
+  slots: 32
+  memory_mode: anchored
+  two_timescale: false
+  use_depth: false
+ppo:
+  rollout: 128
+  seq_len: 32
+  minibatches: 8
+  epochs: 3
+env:
+  reward:
+    kill: 0.6              # was 0.3
+    kill_cap: 6.0          # was 4.0
+    exit_time_bonus: 1.0   # was 2.0: less pressure to leave before fighting
+director:
+  # Dictionaries replace the defaults entirely, so every family is listed.
+  family_start: {movement: 0.0, combat: 0.0, explore: 0.02, progression: 0.05, gauntlet: 0.08}   # gauntlet was 0.15
+  family_weight: {movement: 0.5, combat: 2.5, explore: 1.5, progression: 2.5, gauntlet: 3.0}     # was 1.0, 1.5, 1.5, 2.5, 2.5

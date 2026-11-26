@@ -32,6 +32,8 @@
   th { color: var(--muted); font-weight: 500; font-size: 12px; }
   .scroll { overflow-x: auto; }
   pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+  .wide { margin-bottom: 12px; }
+  tr.top td { font-weight: 600; }
   .legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
   svg { width: 100%; height: auto; display: block; overflow: visible; }
   svg text { fill: var(--muted); font-size: 11px; }
@@ -43,6 +45,7 @@
 <main>
   <div class="head"><h1>Streamed Mind: live training</h1><span class="muted" id="updated">connecting…</span></div>
   <div class="grid" id="hosts"></div>
+  <div class="card scroll wide" id="checkpoints"></div>
   <div class="legend" id="legend"></div>
   <div class="grid" id="charts"></div>
   <div class="grid" id="tables"></div>
@@ -51,7 +54,7 @@
 <script>
 const COLORS = ["var(--s1)", "var(--s2)", "var(--s3)"];
 const CHARTS = [
-  {title: "Held-out score (higher is better)", note: "unseen test maps, every 30 min; this picks the model", src: "eval", key: "score", digits: 1},
+  {title: "Held-out score (higher is better)", note: "unseen test maps; this picks the model", src: "eval", key: "score", digits: 1},
   {title: "Training success", note: "average over the scenario types in practice, 0 to 1; drops when harder levels open", src: "log", key: "success", digits: 2},
   {title: "Reward per decision", note: "game reward, excluding the exploration bonus", src: "log", key: "mean_reward_ext", digits: 3},
   {title: "Decisions per second", note: "training speed", src: "log", key: "fps", digits: 0},
@@ -136,7 +139,35 @@ function table(name, h) {
   const tiers = ev ? Object.entries(ev.tiers).map(([t, m]) =>
     `<tr><td>Tier ${t}</td><td>${num(m.score, 1)}</td><td>${num(m.exit, 2)}</td><td>${num(m.keys, 2)}</td><td>${num(m.unlocks, 2)}</td><td>${num(m.sector_frac, 2)}</td></tr>`).join("") : "";
   return `<div class="card scroll"><h2>${esc(name)}: practice maps</h2>${fam ? `<table><tr><th>type</th><th>level</th><th>success</th><th>exit</th><th>keys</th><th>kills</th></tr>${fam}</table>` : `<p class="muted">No finished episodes yet.</p>`}</div>
-    <div class="card scroll"><h2>${esc(name)}: held-out maps</h2>${tiers ? `<table><tr><th>tier</th><th>score</th><th>exit</th><th>keys</th><th>unlocks</th><th>explored</th></tr>${tiers}</table>` : `<p class="muted">First evaluation comes about 30 minutes into training.</p>`}</div>`;
+    <div class="card scroll"><h2>${esc(name)}: held-out maps</h2>${tiers ? `<table><tr><th>tier</th><th>score</th><th>exit</th><th>keys</th><th>unlocks</th><th>explored</th></tr>${tiers}</table>` : `<p class="muted">No held-out evaluation yet.</p>`}</div>`;
+}
+
+function checkpoints(names, hosts) {
+  const all = names.flatMap((n, i) => (hosts[n].eval || []).map(e => ({...e, host: n, color: COLORS[i], run: hosts[n].run})));
+  const leader = all.reduce((a, e) => !a || e.score > a.score ? e : a, null);
+  const latestBest = {};
+  all.forEach(e => { if (e.new_best) latestBest[e.host] = e; });
+  const schedule = names.map(n => {
+    const h = hosts[n];
+    if (h.evaluating) return `${esc(n)}: testing a checkpoint now`;
+    if (h.last_eval_start && h.eval_minutes) {
+      const due = new Date((h.last_eval_start + h.eval_minutes * 60) * 1000);
+      return `${esc(n)}: next test about ${due.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`;
+    }
+    return `${esc(n)}: first test not started`;
+  }).join(" · ");
+  const failures = names.filter(n => hosts[n].eval_error).map(n => `<div style="color:var(--bad)">✕ ${esc(n)}: last test failed: ${esc(hosts[n].eval_error)}</div>`).join("");
+  const rows = all.sort((a, b) => (b.hours || 0) - (a.hours || 0) || b.step - a.step).map(e => {
+    const tiers = [1, 2, 3, 4].map(t => `<td>${num(e.tiers[t] && e.tiers[t].score, 1)}</td>`).join("");
+    const m = Object.values(e.tiers), exits = m.length ? m.reduce((a, t) => a + t.exit, 0) / m.length : undefined;
+    const mark = e === leader ? "★ best overall" : latestBest[e.host] === e ? `★ kept on ${esc(e.host)}` : e.new_best ? "was best" : "";
+    return `<tr class="${e === leader ? "top" : ""}"><td><span class="dot" style="background:${e.color}"></span>${esc(e.host)}</td><td>${hm(e.hours)}</td><td>${num(e.step / 1e6, 2)}M</td><td>${num(e.score, 1)}</td>${tiers}<td>${num(exits, 2)}</td><td>${mark}</td></tr>`;
+  }).join("");
+  return `<h2>Checkpoint scores on unseen maps</h2>
+    <div class="muted">${leader ? `Best so far: <b>${esc(leader.host)}</b>, score <b>${num(leader.score, 1)}</b> at ${num(leader.step / 1e6, 2)}M decisions, saved on that laptop as nova-train/runs/${esc(leader.run)}/best.pt` : "No checkpoint has been tested yet."}</div>
+    <div class="muted">${schedule}</div>${failures}
+    ${rows ? `<table><tr><th>machine</th><th>trained</th><th>decisions</th><th>score</th><th>tier 1</th><th>tier 2</th><th>tier 3</th><th>tier 4</th><th>exit rate</th><th>kept</th></tr>${rows}</table>
+    <div class="muted">Score weights the harder tiers more. Each map is played once, so small differences between checkpoints are partly luck.</div>` : ""}`;
 }
 
 async function refresh() {
@@ -145,6 +176,7 @@ async function refresh() {
     const names = Object.keys(data.hosts);
     names.forEach(n => { const h = data.hosts[n]; h.log = (h.log || []).map(derive); });
     document.getElementById("hosts").innerHTML = names.map((n, i) => hostCard(n, data.hosts[n], COLORS[i])).join("");
+    document.getElementById("checkpoints").innerHTML = checkpoints(names, data.hosts);
     document.getElementById("legend").innerHTML = names.map((n, i) => `<span><span class="dot" style="background:${COLORS[i]}"></span>${esc(n)}</span>`).join("") + `<span class="muted">horizontal axis: millions of decisions</span>`;
     document.getElementById("charts").innerHTML = CHARTS.map(c => chart(c, names.map((n, i) => ({name: n, color: COLORS[i],
       points: (data.hosts[n][c.src] || []).filter(r => r[c.key] !== undefined && r[c.key] !== null).map(r => [r.step / 1e6, r[c.key]])})))).join("");
