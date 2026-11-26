@@ -1,0 +1,7 @@
+name: gru_baseline
+hypothesis: Ablation - the same curriculum without spatial memory should lose on tiers 3 and 4.
+seed: 1
+total_steps: 300000000
+max_hours: 16
+model:
+  memory: false

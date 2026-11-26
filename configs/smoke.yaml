@@ -1,0 +1,19 @@
+name: smoke
+hypothesis: The whole pipeline runs and the agent improves on the easiest rooms within minutes.
+seed: 1
+total_steps: 400000
+max_hours: 1
+num_workers: 4
+envs_per_worker: 8
+odom_warmup_updates: 5
+eval_minutes: 0
+save_minutes: 1
+ppo:
+  rollout: 128
+  seq_len: 32
+  minibatches: 4
+  epochs: 3
+director:
+  fixed_level: 0
+  families: [movement, combat]
+  family_start: {movement: 0.0, combat: 0.0}

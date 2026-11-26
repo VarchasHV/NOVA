@@ -1,0 +1,8 @@
+name: memory_k64
+hypothesis: Ablation - 64 slots help the largest maps compared with 32.
+seed: 1
+total_steps: 300000000
+max_hours: 16
+model:
+  memory: true
+  slots: 64
