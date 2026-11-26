@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from doom_env import spaces as S
+from doom_env.sensors import RAY_WALL
 from models import obs as O
 
 from .env import FREEDOOM_WAD, TrainEnv
@@ -31,6 +33,8 @@ FREEDOOM_HELDOUT = ("MAP01", "MAP11", "MAP20")
 # MAP30 is the final boss arena: it has no ordinary exit.
 FREEDOOM_TRAIN = tuple(f"MAP{i:02d}" for i in range(1, 30) if f"MAP{i:02d}" not in FREEDOOM_HELDOUT)
 STEP_TIMEOUT_S = 300.0
+USE_BUTTON = S.BUTTONS.index("USE")
+USE_REACH = 64.0  # map units from the player's centre
 
 
 @dataclass
@@ -40,6 +44,7 @@ class EnvConfig:
     rotate_episodes: int = 150  # worker episodes before its pack is regenerated
     mirror_prob: float = 0.5
     variety: float = 0.0  # share of generated maps with uneven shapes, steps and ledges
+    switch_share: float = 0.5  # share of generated maps (levels 1 and up) whose exit is a wall switch
     freedoom_slots: int = 1  # environments per worker that switch to Freedoom maps later in training
     reward: RewardConfig = field(default_factory=RewardConfig)
 
@@ -75,7 +80,7 @@ class ScenarioPool:
                      for f in buckets for l in range(NUM_LEVELS) for _ in range(self.cfg.variants_per_bucket)]
         replay = [tuple(s) for s in directive["nemesis"]]
         path = os.path.join(self.dir, f"pack{self.generation}.wad")
-        entries = write_pack(path, scenarios + replay, self.cfg.variety)
+        entries = write_pack(path, scenarios + replay, self.cfg.variety, self.cfg.switch_share)
         self.entries, self.nemesis = {}, []
         for i, e in enumerate(entries):
             e["wad"] = path
@@ -171,9 +176,12 @@ class EnvSlot:
     def step(self, directive: dict, out: dict, i: int) -> dict | None:
         action = out["action"][i].copy()
         executed = mirror_buttons(action) if self.mirror else action
+        rays = self.env._last_obs["rays"]  # what is straight ahead before the action
+        used_on_wall = bool(executed[USE_BUTTON] > 0.5 and self.prev_action[USE_BUTTON] < 0.5
+                            and rays["hit_type"][0] == RAY_WALL and rays["distance"][0] * O.RAY_RANGE <= USE_REACH)
         obs, _, terminated, truncated, _ = self.env.step(executed.astype(np.int8))
         ws = self.env.world_state()
-        ext, intrinsic, _ = self.tracker.step(ws)
+        ext, intrinsic, _ = self.tracker.step(ws, used_on_wall)
         done = terminated or truncated
         out["rew_ext"][i], out["rew_int"][i], out["done"][i] = ext, intrinsic, float(done)
         self.prev_action = action.astype(np.float32)

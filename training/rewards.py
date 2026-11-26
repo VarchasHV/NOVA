@@ -40,9 +40,15 @@ class RewardConfig:
     # Combat practice maps only; the defaults change nothing.
     combat_exit_floor: float = 1.0  # share of the exit reward for leaving with no kills (all kills: the full reward)
     combat_kill_scale: float = 1.0  # multiplies the kill reward and its cap
+    # Practice signals for aiming and for switches; the defaults (0) leave them off.
+    hit: float = 0.0  # per HP of damage the player deals
+    hit_cap: float = 3.0
+    use_spot: float = 0.0  # for pressing USE against a wall at a place and heading not tried before
+    use_spot_cap: float = 1.0
 
 
-COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "damage", "death", "time", "stagnation", "grid")
+COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "hit", "use_spot", "damage", "death", "time",
+              "stagnation", "grid")
 
 
 class RewardTracker:
@@ -56,6 +62,9 @@ class RewardTracker:
         self.keys = ws["keys"].copy()
         self.kills = ws["kills"]
         self.damage = ws["damage_taken"]
+        self.dealt = ws.get("damage_dealt", 0.0)
+        self.tried: set[tuple[int, int, int]] = set()
+        self.hit_paid = self.use_paid = 0.0
         self.opened = set(int(i) for i in ws["door_open"].nonzero()[0])  # already open at start
         self.novelty = EpisodicNovelty()
         self.novelty.new_sector(ws["sector"])
@@ -66,8 +75,9 @@ class RewardTracker:
         self.counts = {"keys": 0, "unlocks": 0, "doors": 0, "exit": 0, "stagnant_steps": 0}
         self.totals_by_component = dict.fromkeys(COMPONENTS, 0.0)
 
-    def step(self, ws: dict) -> tuple[float, float, dict]:
-        """Returns (extrinsic, intrinsic, per-component values)."""
+    def step(self, ws: dict, used_on_wall: bool = False) -> tuple[float, float, dict]:
+        """Returns (extrinsic, intrinsic, per-component values). used_on_wall: this action newly
+        pressed USE with a plain wall within reach ahead."""
         c, r = self.cfg, dict.fromkeys(COMPONENTS, 0.0)
         remaining = max(0.0, 1.0 - ws["tic"] / max(ws["episode_ticks"], 1))
         r["time"] = -c.time
@@ -104,6 +114,19 @@ class RewardTracker:
             r["kill"] = max(0.0, min(each * kills, cap - self.kill_paid))
             self.kill_paid += r["kill"]
         self.kills = ws["kills"]
+
+        dealt = ws.get("damage_dealt", 0.0)
+        if dealt > self.dealt:
+            r["hit"] = max(0.0, min(c.hit * (dealt - self.dealt), c.hit_cap - self.hit_paid))
+            self.hit_paid += r["hit"]
+        self.dealt = dealt
+
+        if used_on_wall:  # a switch looks like any wall, so trying walls is how one is found
+            spot = (int(ws["x"] // 64), int(ws["y"] // 64), int(((ws["angle"] + 45.0) % 360.0) // 90.0))
+            if spot not in self.tried:
+                self.tried.add(spot)
+                r["use_spot"] = max(0.0, min(c.use_spot, c.use_spot_cap - self.use_paid))
+                self.use_paid += r["use_spot"]
 
         r["damage"] = -c.damage * max(0.0, min(ws["damage_taken"] - self.damage, 200.0))
         self.damage = ws["damage_taken"]

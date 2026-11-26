@@ -13,6 +13,7 @@ and compare on the same held-out suite.
 | memory_k64 | `configs/memory_k64.yaml` | 64 slots help the largest maps | | optional |
 | fight_s3 (ASUS) | `configs/asus_fight.yaml`, resumed from the `full` checkpoint | combat-only exit and kill rewards raise kills without more deaths or weaker navigation | | compare with `full` at the same training time |
 | variety_s4 (ASUS) | `configs/asus_variety.yaml`, resumed from the `full` checkpoint at 32.6M or later | uneven practice maps and more Freedoom improve survival and exits on unfamiliar maps | | replaces fight_s3 |
+| aim_s5 (ASUS) | `configs/asus_aim.yaml`, resumed from a `full` checkpoint | damage reward improves aiming; more switch practice improves switch exits | | replaces variety_s4 |
 | greedy vs sample | `evaluation.run_heldout --mode` | sampling gets stuck less | | pick before export |
 
 ## Development checks on the Mac (CPU, not results to report)

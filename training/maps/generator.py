@@ -56,13 +56,14 @@ def level_rng(family: str, level: int, seed: int) -> np.random.Generator:
     return np.random.default_rng([FAMILIES.index(family), level, seed])
 
 
-def generate(family: str, level: int, seed: int, variety: float = 0.0) -> Level:
+def generate(family: str, level: int, seed: int, variety: float = 0.0, switch_share: float = 0.5) -> Level:
     """`variety` is the share of maps given uneven shapes, steps and ledges (0 = the plain square maps).
-    The same four arguments always give the same map."""
+    `switch_share` is the share of room maps (levels 1 and up) that end at a wall switch.
+    The same arguments always give the same map."""
     if family not in FAMILIES or not 0 <= level < NUM_LEVELS:
         raise ValueError(f"unknown scenario {family!r} level {level}")
     rng = level_rng(family, level, seed)
-    lv = _arena(rng, level) if family == "combat" else _rooms(rng, family, level)
+    lv = _arena(rng, level) if family == "combat" else _rooms(rng, family, level, switch_share)
     if seed >= HELDOUT_SEED_START:
         lv.ticks = int(rng.integers(2100, 4201))
     elif level >= 3:
@@ -111,10 +112,10 @@ def _monster(rng, level: int) -> int:
     return MONSTERS[int(rng.choice(pool, p=w / w.sum()))]
 
 
-def _exit(rng, level: int, grid, regions, room, avoid: set, switch_only: bool = False):
+def _exit(rng, level: int, grid, regions, room, avoid: set, switch_only: bool = False, switch_share: float = 0.5):
     """Add the level exit to room (x0, y0, x1, y1): a wall switch or a walk-over alcove."""
     x0, y0, x1, y1 = room
-    if switch_only or (level >= 1 and rng.random() < 0.5):
+    if switch_only or (level >= 1 and rng.random() < switch_share):
         walls = []
         for x in range(x0, x1):
             for y in range(y0, y1):
@@ -223,7 +224,7 @@ def _bfs(n: int, edges, source: int):
     return depth, parent
 
 
-def _rooms(rng, family: str, level: int) -> Level:
+def _rooms(rng, family: str, level: int, switch_share: float = 0.5) -> Level:
     p = {k: v[level] for k, v in PARAMS[family].items()}
     n = int(p["rooms"]) + int(rng.integers(0, 2))
     size, slots, edges, spare = _room_graph(rng, n, p["loops"])
@@ -297,7 +298,7 @@ def _rooms(rng, family: str, level: int) -> Level:
     things: list[Thing] = []
     sx, sy = placer.pick(_inner(*rects[0]))
     things.append(Thing(sx + 0.5, sy + 0.5, PLAYER, int(rng.integers(0, 360))))
-    switch = _exit(rng, level, grid, regions, rects[exit_room], placer.used)
+    switch = _exit(rng, level, grid, regions, rects[exit_room], placer.used, switch_share=switch_share)
     cells = [_inner(*r) for r in rects]
     for i, room in enumerate(key_rooms):
         card, skull = KEY_THINGS[colours[i]]
@@ -330,12 +331,13 @@ def map_lumps_for(level: Level, name: str) -> list[Lump]:
     return [Lump(name, b""), Lump("TEXTMAP", to_udmf(level).encode()), Lump("ENDMAP", b"")]
 
 
-def write_pack(path: str | Path, scenarios: list[tuple[str, int, int]], variety: float = 0.0) -> list[dict]:
+def write_pack(path: str | Path, scenarios: list[tuple[str, int, int]], variety: float = 0.0,
+               switch_share: float = 0.5) -> list[dict]:
     """Write many maps into one WAD (switching maps inside one WAD costs ~2 ms, switching WADs
     ~140 ms). Returns one entry per map: name, family, level, seed, ticks."""
     lumps, entries = [], []
     for i, (family, level, seed) in enumerate(scenarios):
-        lv = generate(family, level, seed, variety)
+        lv = generate(family, level, seed, variety, switch_share)
         name = f"G{i:04d}"
         lumps += map_lumps_for(lv, name)
         entries.append({"map": name, "family": family, "level": level, "seed": seed, "ticks": lv.ticks})
