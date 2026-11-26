@@ -188,7 +188,7 @@ def main(argv=None) -> int:
             counters["elapsed"] += dt
 
             if counters["update"] % cfg.log_every == 0:
-                stats.update(fps=steps / dt, fps_collect=steps / t_collect, progress=p,
+                stats.update(fps=steps / dt, fps_collect=steps / t_collect, progress=p, hours=counters["elapsed"] / 3600,
                              mean_reward_ext=float(rollout["rew"][..., 0].mean()), mean_reward_int=float(rollout["rew"][..., 1].mean()))
                 for k, v in stats.items():
                     writer.add_scalar(f"train/{k}", v, counters["steps"])

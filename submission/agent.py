@@ -34,7 +34,9 @@ class DoomAgent:
         torch.set_num_threads(1)
         self.observation_space = observation_space
         self.action_space = action_space
-        self.device = torch.device("cuda" if device == "cuda" and torch.cuda.is_available() else "cpu")
+        # We run on the CPU even when a GPU is offered: for a ~1M parameter model deciding one step at a
+        # time it is faster (RTX 3050 laptop, while training: 2.3 ms CPU vs 10 ms GPU mean per act).
+        self.device = torch.device("cpu")
         self.mode, self.temperature = "sample", 1.0
         self.errors = 0
         self.weights_loaded = False

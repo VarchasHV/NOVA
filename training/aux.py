@@ -20,7 +20,8 @@ def odometry_loss(odometry: Odometry, batch: dict) -> tuple[torch.Tensor, dict]:
     raw = odometry(batch["prev_ray"], batch["ray"], batch["cmd"], batch["prev_cmd"], batch["prev_cmd2"],
                    batch["vel"], batch["prev_vel"])
     target = odometry.to_target(batch["motion"]).clamp(-4.0, 4.0)
-    loss = F.smooth_l1_loss(raw, target, beta=0.25)
+    # A small beta keeps the pull strong for small errors: tiny per-step biases add up to large drift.
+    loss = F.smooth_l1_loss(raw, target, beta=0.02)
     with torch.no_grad():
         error = (odometry.to_motion(raw) - batch["motion"]).abs()
         stats = {"odom_translation_error_units": float(error[:, :2].mean() * 1024),

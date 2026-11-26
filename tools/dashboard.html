@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streamed Mind training</title>
+<style>
+  :root { color-scheme: light; --page: #f5f5f4; --surface: #ffffff; --text: #191919; --muted: #666666;
+          --grid: #e6e6e4; --s1: #257de0; --s2: #f47230; --s3: #00b894; --good: #008a17; --bad: #ec4647; }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --page: #101010; --surface: #191919; --text: #efefef; --muted: #9c9c9c;
+            --grid: #2e2e2e; --s1: #338ced; --s2: #e76624; --s3: #00a888; --good: #0aac23; --bad: #eb6263; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--page); color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0; } h2 { font-size: 15px; margin: 0 0 8px; }
+  .muted { color: var(--muted); }
+  .head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .card { background: var(--surface); border-radius: 10px; padding: 14px; min-width: 0; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .status { font-weight: 600; }
+  .bar { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .bar i { display: block; height: 100%; border-radius: 4px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .tiles b { display: block; font-size: 19px; font-weight: 600; }
+  .tiles span { color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--text); border: 1px solid var(--grid);
+         border-radius: 6px; padding: 6px 8px; font-size: 12px; display: none; box-shadow: 0 2px 10px #0003; }
+</style>
+</head>
+<body>
+<main>
+  <div class="head"><h1>Streamed Mind: live training</h1><span class="muted" id="updated">connecting…</span></div>
+  <div class="grid" id="hosts"></div>
+  <div class="legend" id="legend"></div>
+  <div class="grid" id="charts"></div>
+  <div class="grid" id="tables"></div>
+</main>
+<div class="tip" id="tip"></div>
+<script>
+const COLORS = ["var(--s1)", "var(--s2)", "var(--s3)"];
+const CHARTS = [
+  {title: "Held-out score (higher is better)", note: "unseen test maps, every 30 min; this picks the model", src: "eval", key: "score", digits: 1},
+  {title: "Training success", note: "average over the scenario types in practice, 0 to 1; drops when harder levels open", src: "log", key: "success", digits: 2},
+  {title: "Reward per decision", note: "game reward, excluding the exploration bonus", src: "log", key: "mean_reward_ext", digits: 3},
+  {title: "Decisions per second", note: "training speed", src: "log", key: "fps", digits: 0},
+  {title: "Odometry turn error (degrees)", note: "how well the agent estimates its own turning; lower is better", src: "log", key: "odom_turn_error_deg", digits: 2},
+  {title: "Exit rate on training maps", note: "share of recent episodes that reached the exit", src: "log", key: "exit", digits: 2},
+];
+const FAMILIES = ["movement", "combat", "explore", "progression", "gauntlet", "freedoom"];
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
+const num = (v, d = 0) => v === undefined || v === null || Number.isNaN(v) ? "–" : Number(v).toLocaleString("en-US", {maximumFractionDigits: d, minimumFractionDigits: d});
+const hm = h => h === undefined || h === null ? "–" : `${Math.floor(h)}h ${String(Math.floor((h % 1) * 60)).padStart(2, "0")}m`;
+
+function derive(row) {
+  const mean = key => { const v = FAMILIES.map(f => row[`${f}/${key}`]).filter(x => x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined; };
+  return {...row, success: mean("success"), exit: mean("exit")};
+}
+
+function hostCard(name, h, color) {
+  const last = h.log && h.log.length ? h.log[h.log.length - 1] : null;
+  const state = h.error ? ["✕ Unreachable", "var(--bad)"] : h.running ? (last ? ["● Training", "var(--good)"] : ["◐ Starting up", "var(--good)"]) : ["○ Not training", "var(--muted)"];
+  const progress = last ? last.progress : 0;
+  const left = last && last.hours !== undefined && h.max_hours ? Math.max(0, h.max_hours - last.hours) : undefined;
+  const ev = h.eval && h.eval.length ? h.eval[h.eval.length - 1] : null;
+  const gpu = h.gpu || {};
+  return `<div class="card"><h2><span class="dot" style="background:${color}"></span>${esc(name)} <span class="muted">${esc(h.run || "")}</span></h2>
+    <div class="status" style="color:${state[1]}">${state[0]}</div>
+    ${h.error ? `<pre>${esc(h.error)}</pre>` : ""}
+    <div class="bar"><i style="width:${(100 * (progress || 0)).toFixed(1)}%;background:${color}"></i></div>
+    <div class="muted">${num(100 * (progress || 0), 1)}% done · ${hm(last && last.hours)} of ${num(h.max_hours, 1)} h · about ${hm(left)} left</div>
+    <div class="tiles">
+      <div><b>${last ? num(last.step / 1e6, 2) + "M" : "–"}</b><span>decisions</span></div>
+      <div><b>${num(last && last.fps)}</b><span>per second</span></div>
+      <div><b>${ev ? num(ev.score, 1) : "–"}</b><span>held-out score</span></div>
+      <div><b>${num(gpu.util)}%</b><span>GPU busy</span></div>
+      <div><b>${num(gpu.temp)}°C</b><span>GPU temperature</span></div>
+      <div><b>${num(gpu.mem / 1024, 1)} / ${num(gpu.mem_total / 1024, 0)} GB</b><span>GPU memory</span></div>
+    </div>
+    <pre>${esc((h.console || []).join("\n"))}</pre></div>`;
+}
+
+function chart(spec, series) {
+  const W = 480, H = 200, L = 46, R = 8, T = 8, B = 22;
+  const all = series.flatMap(s => s.points);
+  if (!all.length) return `<div class="card"><h2>${spec.title}</h2><div class="muted">${spec.note}</div><p class="muted">No data yet.</p></div>`;
+  const xMax = Math.max(...all.map(p => p[0]), 0.001);
+  let lo = Math.min(...all.map(p => p[1]), 0), hi = Math.max(...all.map(p => p[1]));
+  if (hi <= lo) hi = lo + 1;
+  const X = v => L + (W - L - R) * v / xMax, Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  let g = "";
+  for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4;
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${num(v, spec.digits)}</text>`; }
+  for (let i = 0; i <= 4; i++) { const v = xMax * i / 4; g += `<text x="${X(v)}" y="${H - 6}" text-anchor="middle">${num(v, xMax < 4 ? 2 : 0)}M</text>`; }
+  const lines = series.map(s => s.points.length === 0 ? "" :
+    `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" points="${s.points.map(p => `${X(p[0])},${Y(p[1])}`).join(" ")}"/>` +
+    (s.points.length < 12 ? s.points.map(p => `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join("") : "")).join("");
+  const data = esc(JSON.stringify({series, xMax, L, R, W, digits: spec.digits})).replace(/"/g, "&quot;");
+  return `<div class="card"><h2>${spec.title}</h2><div class="muted">${spec.note}</div>
+    <svg viewBox="0 0 ${W} ${H}" data-chart="${data}">${g}${lines}<line class="cross" y1="${T}" y2="${H - B}" stroke="var(--muted)" visibility="hidden"/></svg></div>`;
+}
+
+document.addEventListener("mousemove", e => {
+  const tip = document.getElementById("tip"), svg = e.target.closest && e.target.closest("svg[data-chart]");
+  document.querySelectorAll(".cross").forEach(c => c.setAttribute("visibility", "hidden"));
+  if (!svg) { tip.style.display = "none"; return; }
+  const d = JSON.parse(svg.dataset.chart), box = svg.getBoundingClientRect();
+  const px = (e.clientX - box.left) * d.W / box.width;
+  const x = Math.min(d.xMax, Math.max(0, (px - d.L) / (d.W - d.L - d.R) * d.xMax));
+  const rows = d.series.filter(s => s.points.length).map(s => {
+    const p = s.points.reduce((a, b) => Math.abs(b[0] - x) < Math.abs(a[0] - x) ? b : a);
+    return `<div><span class="dot" style="background:${s.color}"></span>${esc(s.name)}: ${num(p[1], d.digits)} at ${num(p[0], 2)}M</div>`;
+  });
+  const cross = svg.querySelector(".cross"), cx = d.L + (d.W - d.L - d.R) * x / d.xMax;
+  cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible");
+  tip.innerHTML = rows.join(""); tip.style.display = "block";
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - 220) + "px"; tip.style.top = e.clientY + 14 + "px";
+});
+
+function table(name, h) {
+  const last = h.log && h.log.length ? h.log[h.log.length - 1] : null;
+  const ev = h.eval && h.eval.length ? h.eval[h.eval.length - 1] : null;
+  const fam = last ? FAMILIES.filter(f => last[`${f}/success`] !== undefined).map(f =>
+    `<tr><td>${f}</td><td>${num(last[`${f}/level_open`])}</td><td>${num(last[`${f}/success`], 2)}</td><td>${num(last[`${f}/exit`], 2)}</td><td>${num(last[`${f}/keys`], 2)}</td><td>${num(last[`${f}/kill_frac`], 2)}</td></tr>`).join("") : "";
+  const tiers = ev ? Object.entries(ev.tiers).map(([t, m]) =>
+    `<tr><td>Tier ${t}</td><td>${num(m.score, 1)}</td><td>${num(m.exit, 2)}</td><td>${num(m.keys, 2)}</td><td>${num(m.unlocks, 2)}</td><td>${num(m.sector_frac, 2)}</td></tr>`).join("") : "";
+  return `<div class="card scroll"><h2>${esc(name)}: practice maps</h2>${fam ? `<table><tr><th>type</th><th>level</th><th>success</th><th>exit</th><th>keys</th><th>kills</th></tr>${fam}</table>` : `<p class="muted">No finished episodes yet.</p>`}</div>
+    <div class="card scroll"><h2>${esc(name)}: held-out maps</h2>${tiers ? `<table><tr><th>tier</th><th>score</th><th>exit</th><th>keys</th><th>unlocks</th><th>explored</th></tr>${tiers}</table>` : `<p class="muted">First evaluation comes about 30 minutes into training.</p>`}</div>`;
+}
+
+async function refresh() {
+  try {
+    const data = await (await fetch("/data", {cache: "no-store"})).json();
+    const names = Object.keys(data.hosts);
+    names.forEach(n => { const h = data.hosts[n]; h.log = (h.log || []).map(derive); });
+    document.getElementById("hosts").innerHTML = names.map((n, i) => hostCard(n, data.hosts[n], COLORS[i])).join("");
+    document.getElementById("legend").innerHTML = names.map((n, i) => `<span><span class="dot" style="background:${COLORS[i]}"></span>${esc(n)}</span>`).join("") + `<span class="muted">horizontal axis: millions of decisions</span>`;
+    document.getElementById("charts").innerHTML = CHARTS.map(c => chart(c, names.map((n, i) => ({name: n, color: COLORS[i],
+      points: (data.hosts[n][c.src] || []).filter(r => r[c.key] !== undefined && r[c.key] !== null).map(r => [r.step / 1e6, r[c.key]])})))).join("");
+    document.getElementById("tables").innerHTML = names.map(n => table(n, data.hosts[n])).join("");
+    document.getElementById("updated").textContent = data.age === null ? "waiting for the first reading…" : `laptops read ${Math.round(data.age)} s ago`;
+  } catch (err) {
+    document.getElementById("updated").textContent = "dashboard server not reachable: restart tools/dashboard.py";
+  }
+}
+refresh(); setInterval(refresh, 10000);
+</script>
+</body>
+</html>
