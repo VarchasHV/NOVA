@@ -17,6 +17,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+def available_ram_gb() -> float | None:
+    """Memory that can be used without swapping (Linux only; None elsewhere)."""
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 2**20
+    except OSError:
+        pass
+    return None
+
+
 def main() -> int:
     ok = True
     print(f"python {platform.python_version()} on {platform.system()} {platform.machine()}, {os.cpu_count()} CPU threads")
@@ -50,14 +61,21 @@ def main() -> int:
     cfg = load_config(ROOT / "configs" / "full.yaml")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cpus = os.cpu_count() or 4
-    candidates = sorted({max(1, cpus // 2), max(1, cpus - 2)})
+    workers_options = sorted({max(1, cpus // 2), max(1, cpus - 2)})
+    candidates = [(w, e) for w in workers_options for e in (8, 16)]
     best = None
     actor = StreamedMindActor(cfg.model).to(device)
     critic = PrivilegedCritic(cfg.model.core_size).to(device)
     learner = PPOLearner(actor, critic, cfg.ppo)
     director = Director(cfg.director)
-    for workers in candidates:
-        env = VecEnv(cfg.env, workers, cfg.envs_per_worker, seed=0)
+    for workers, per_worker in candidates:
+        # Each environment runs its own game process. Skip settings that would not fit in RAM.
+        need_gb = (workers * per_worker * 55 + workers * 120 + 2500) / 1024
+        free_gb = available_ram_gb()
+        if free_gb is not None and need_gb > free_gb:
+            print(f"{workers:3d} workers x {per_worker:2d}: skipped, needs about {need_gb:.1f} GB RAM, {free_gb:.1f} GB free")
+            continue
+        env = VecEnv(cfg.env, workers, per_worker, seed=0)
         try:
             collector = Collector(env, actor, critic, cfg.ppo.rollout, cfg.ppo.seq_len, device)
             env.reset(director.directive(0.2))
@@ -72,16 +90,21 @@ def main() -> int:
             update = time.time() - t
             steps = env.num_envs * cfg.ppo.rollout
             sps = steps / (collect + update)
-            print(f"{workers:3d} workers ({env.num_envs} envs): collect {steps / collect:7.0f}/s, update {update:5.1f}s, "
+            print(f"{workers:3d} workers x {per_worker:2d} = {env.num_envs:3d} envs: collect {steps / collect:7.0f}/s, update {update:5.1f}s, "
                   f"overall {sps:6.0f} decisions/s = {sps * 3600 / 1e6:.1f}M per hour")
             if best is None or sps > best[0]:
-                best = (sps, workers)
+                best = (sps, workers, per_worker)
+        except torch.cuda.OutOfMemoryError:
+            print(f"{workers:3d} workers x {per_worker:2d}: out of GPU memory")
         finally:
             env.close()
     if device == "cuda":
         print(f"peak GPU memory during training test: {torch.cuda.max_memory_reserved() / 2**30:.2f} GB")
-    sps, workers = best
-    print(f"\nrecommended: --set num_workers={workers}")
+    if best is None:
+        print("\nNOT READY: no setting fitted in memory; close other programs or lower ppo.rollout in configs/full.yaml")
+        return 1
+    sps, workers, per_worker = best
+    print(f"\nrecommended: --set num_workers={workers} --set envs_per_worker={per_worker}")
     for hours in (8, 14, 18):
         print(f"  {hours:2d} h of training ~ {sps * 3600 * hours / 1e6:5.0f}M decisions")
     print("\nREADY" if ok else "\nNOT READY: fix the items above")

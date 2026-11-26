@@ -19,8 +19,10 @@ from . import obs as O
 TICS = 4  # game tics per decision
 TRANSLATION_SCALE = 32.0 / O.RAY_RANGE
 TURN_SCALE = 0.25
-# inputs besides the two ray scans: prev action(9), the action before it(9), velocity now(2), before(2)
-EXTRA = 9 + 9 + 2 + 2
+# Inputs besides the ray scans: the last three actions and the velocity now and before. Three actions
+# are needed because Doom turns slowly for the first 6 tics a turn key is held, so a turn's size
+# differs between the 1st, 2nd and later decisions of holding it.
+EXTRA = 3 * 9 + 2 + 2
 
 
 class Odometry(nn.Module):
@@ -38,14 +40,14 @@ class Odometry(nn.Module):
         nn.init.zeros_(self.head.weight)
         nn.init.zeros_(self.head.bias)
 
-    def forward(self, prev_ray, ray, action, prev_action, vel, prev_vel) -> torch.Tensor:
-        """prev_ray/ray (B,64), action = buttons held during this motion (B,9), prev_action = the ones
-        before that (turning accelerates while held), vel/prev_vel = (forward, right) units per tic.
+    def forward(self, prev_ray, ray, cmd, prev_cmd, prev_cmd2, vel, prev_vel) -> torch.Tensor:
+        """prev_ray/ray (B,64); cmd = buttons held during this motion (B,9), prev_cmd and prev_cmd2
+        = the two before; vel/prev_vel = (forward, right) in units per tic.
 
-        Returns (B,3) normalised motion: divide by the scales' meaning in `to_motion`.
+        Returns (B,3) normalised motion; `to_motion` converts it to real units.
         """
         scans = torch.stack([prev_ray, ray, 10.0 * (ray - prev_ray)], dim=1)
-        extra = torch.cat([action, prev_action, vel / 16.0, prev_vel / 16.0], dim=-1)
+        extra = torch.cat([cmd, prev_cmd, prev_cmd2, vel / 16.0, prev_vel / 16.0], dim=-1)
         residual = self.head(self.net(torch.cat([self.conv(scans).flatten(1), extra], dim=-1)))
         # Starting guess: translation = average velocity x tics. The network learns the correction.
         prior = 0.5 * (vel + prev_vel) * TICS / O.RAY_RANGE / TRANSLATION_SCALE

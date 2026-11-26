@@ -10,7 +10,7 @@ from models.actor import StreamedMindActor
 
 from .vec_env import VecEnv
 
-ODOM_INPUTS = ("prev_ray", "prev_cmd", "prev_vel")
+ODOM_INPUTS = ("prev_ray", "prev_cmd", "prev_cmd2", "prev_vel")
 
 
 class ReturnScaler:
@@ -160,6 +160,7 @@ def odometry_pairs(rollout: dict, size: int) -> dict | None:
     return {
         "prev_ray": rollout["prev_ray"][t, e], "ray": rollout["obs/ray_dist"][t, e],
         "cmd": rollout["obs/prev_action"][t, e], "prev_cmd": rollout["prev_cmd"][t, e],
+        "prev_cmd2": rollout["prev_cmd2"][t, e],
         "vel": rollout["obs/vitals"][t, e][:, 14:16], "prev_vel": rollout["prev_vel"][t, e],
         "motion": rollout["odom"][t, e],
     }

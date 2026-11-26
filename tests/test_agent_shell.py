@@ -47,7 +47,7 @@ def test_survives_nan_observation_and_corrupt_state():
     obs = observations(3)
     obs[0]["vitals"][:] = np.nan
     assert valid(agent.act(obs[0])) and agent.errors == 0
-    agent.state["h"][:] = float("nan")
+    agent.state["h"] = torch.full((1, agent.model.cfg.core_size), float("nan"))
     assert valid(agent.act(obs[1])) and agent.errors == 1 and agent.state is None
     assert valid(agent.act(obs[2])) and agent.errors == 1 and torch.isfinite(agent.state["h"]).all()
 

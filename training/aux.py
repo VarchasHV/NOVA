@@ -17,7 +17,8 @@ def aux_loss(predicted_logits: torch.Tensor, target: torch.Tensor) -> torch.Tens
 
 def odometry_loss(odometry: Odometry, batch: dict) -> tuple[torch.Tensor, dict]:
     """batch holds flat (B, ...) tensors of consecutive-step pairs and the true motion."""
-    raw = odometry(batch["prev_ray"], batch["ray"], batch["cmd"], batch["prev_cmd"], batch["vel"], batch["prev_vel"])
+    raw = odometry(batch["prev_ray"], batch["ray"], batch["cmd"], batch["prev_cmd"], batch["prev_cmd2"],
+                   batch["vel"], batch["prev_vel"])
     target = odometry.to_target(batch["motion"]).clamp(-4.0, 4.0)
     loss = F.smooth_l1_loss(raw, target, beta=0.25)
     with torch.no_grad():

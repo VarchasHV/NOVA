@@ -1,3 +1,39 @@
+# Streamed Mind
+
+Our entry for **Yugaantar 2026 · DevForge — Track 1: "Can It Play DOOM?"**: a recurrent PPO agent with
+a budgeted, position-anchored spatial memory. Design: [docs/BRIEF.md](docs/BRIEF.md). Facts about the
+environment: [docs/FINDINGS.md](docs/FINDINGS.md).
+
+## Train, evaluate, submit
+
+```bash
+uv sync
+uv run python tools/check_setup.py                            # GPU, speed, suggested worker settings
+uv run python -m training.train --config configs/smoke.yaml   # whole pipeline, up to 1 hour
+uv run python -m training.train --config configs/full.yaml    # real run; run again to resume
+uv run tensorboard --logdir runs
+uv run python -m evaluation.run_heldout --ckpt runs/full/best.pt
+uv run python -m training.export --ckpt runs/full/best.pt     # writes submission/weights/model.pt
+uv run python -m evaluation.profile_latency
+uv run python tools/viz_topdown.py --tier 3 --out episode.png
+uv run python validate.py
+```
+
+Add `--set key=value` to override any setting, for example `--set max_hours=12 --set num_workers=10`.
+Driving the GPU laptops from the Mac: [docs/TRAINING.md](docs/TRAINING.md).
+
+| Folder | Contents |
+|---|---|
+| `models/` | actor only: encoders, odometry, streamed memory, core, action heads |
+| `submission/` | `DoomAgent` with its safety shell, and exported weights (Git LFS) |
+| `training/` | PPO, rewards, map generator, curriculum ([details](training/README.md)) |
+| `evaluation/` | held-out suite, local scorer, latency profile |
+| `configs/` | one YAML file per experiment |
+
+The rest of this file is the original template guide.
+
+---
+
 # devforge-doom-template
 
 Starter template for **Yugaantar 2026 · DevForge — Track 1: "Can It Play DOOM?"**

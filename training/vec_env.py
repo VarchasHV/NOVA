@@ -28,7 +28,8 @@ from .rewards import RewardConfig, RewardTracker
 
 AUX_DIM = 4  # key ever seen, locked door ever seen, exit nearby, stagnating
 FREEDOOM_HELDOUT = ("MAP01", "MAP11", "MAP20")
-FREEDOOM_TRAIN = tuple(f"MAP{i:02d}" for i in range(1, 31) if f"MAP{i:02d}" not in FREEDOOM_HELDOUT)
+# MAP30 is the final boss arena: it has no ordinary exit.
+FREEDOOM_TRAIN = tuple(f"MAP{i:02d}" for i in range(1, 30) if f"MAP{i:02d}" not in FREEDOOM_HELDOUT)
 STEP_TIMEOUT_S = 300.0
 
 

@@ -54,6 +54,7 @@ class StreamedMindActor(nn.Module):
             prev_ray=torch.zeros(batch, O.NUM_RAYS, device=device),
             prev_vel=torch.zeros(batch, 2, device=device),
             prev_cmd=torch.zeros(batch, O.NUM_BUTTONS, device=device),
+            prev_cmd2=torch.zeros(batch, O.NUM_BUTTONS, device=device),
             started=torch.zeros(batch, device=device),
         )
         return state
@@ -75,7 +76,8 @@ class StreamedMindActor(nn.Module):
         """Dead-reckon from the previous pose. Never receives gradients from the policy."""
         with torch.no_grad():
             vel = obs["vitals"][:, 14:16]
-            raw = self.odometry(state["prev_ray"], obs["ray_dist"], obs["prev_action"], state["prev_cmd"], vel, state["prev_vel"])
+            raw = self.odometry(state["prev_ray"], obs["ray_dist"], obs["prev_action"], state["prev_cmd"],
+                                state["prev_cmd2"], vel, state["prev_vel"])
             motion = self.odometry.to_motion(raw) * state["started"].unsqueeze(-1)  # first frame: no motion
             return integrate_pose(state["pose"], motion)
 
@@ -103,6 +105,7 @@ class StreamedMindActor(nn.Module):
             prev_ray=obs["ray_dist"].clone(),
             prev_vel=obs["vitals"][:, 14:16].clone(),
             prev_cmd=obs["prev_action"].clone(),
+            prev_cmd2=state["prev_cmd"],
             started=torch.ones_like(state["started"]),
         )
         return StepOutput(logits, new["h"], new, pose, info)
