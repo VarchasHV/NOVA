@@ -11,6 +11,7 @@ and compare on the same held-out suite.
 | full | `configs/full.yaml` | submission candidate | | |
 | gru_baseline | `configs/gru_baseline.yaml` | no memory loses on tiers 3 and 4 | | |
 | memory_k64 | `configs/memory_k64.yaml` | 64 slots help the largest maps | | optional |
+| fight_s3 (ASUS) | `configs/asus_fight.yaml`, resumed from the `full` checkpoint | combat-only exit and kill rewards raise kills without more deaths or weaker navigation | | compare with `full` at the same training time |
 | greedy vs sample | `evaluation.run_heldout --mode` | sampling gets stuck less | | pick before export |
 
 ## Development checks on the Mac (CPU, not results to report)

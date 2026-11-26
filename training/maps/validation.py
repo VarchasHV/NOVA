@@ -25,7 +25,7 @@ def reachable(level: Level) -> tuple[set[tuple[int, int]], set[int]]:
                 if r == VOID or (nx, ny) in seen:
                     continue
                 region = level.regions[r]
-                if region.lock and region.lock not in held:
+                if region.kind == "ledge" or (region.lock and region.lock not in held):
                     continue
                 seen.add((nx, ny))
                 stack.append((nx, ny))

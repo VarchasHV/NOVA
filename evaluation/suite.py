@@ -15,7 +15,7 @@ TIERS = {1: "combat", 2: "explore", 3: "progression", 4: "gauntlet"}
 LEVELS = (1, 2, 3, 4)  # cycled through, so each tier spans easy to hard
 
 
-def build_suite(directory: str, maps_per_tier: int = 6, freedoom: bool = True) -> list[dict]:
+def build_suite(directory: str, maps_per_tier: int = 6, freedoom: bool = True, variety: float = 0.0) -> list[dict]:
     """Write the generated maps into `directory`; returns one entry per evaluation episode."""
     from training.env import FREEDOOM_WAD
 
@@ -25,7 +25,7 @@ def build_suite(directory: str, maps_per_tier: int = 6, freedoom: bool = True) -
             scenarios.append((family, LEVELS[i % len(LEVELS)], HELDOUT_SEED_START + 1000 * tier + i))
             tiers.append(tier)
     path = f"{directory}/heldout.wad"
-    entries = write_pack(path, scenarios)
+    entries = write_pack(path, scenarios, variety)
     for e, tier in zip(entries, tiers):
         e.update(wad=path, tier=tier)
     if freedoom:

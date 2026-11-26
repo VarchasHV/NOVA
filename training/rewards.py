@@ -37,6 +37,9 @@ class RewardConfig:
     stagnation_radius: float = 64.0
     grid: float = 0.05  # intrinsic
     door_reach: float = 192.0  # only credit doors that open near the player
+    # Combat practice maps only; the defaults change nothing.
+    combat_exit_floor: float = 1.0  # share of the exit reward for leaving with no kills (all kills: the full reward)
+    combat_kill_scale: float = 1.0  # multiplies the kill reward and its cap
 
 
 COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "damage", "death", "time", "stagnation", "grid")
@@ -45,8 +48,11 @@ COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "damage", "deat
 class RewardTracker:
     """Create at episode start with the first world state, then call step() after every action."""
 
-    def __init__(self, cfg: RewardConfig, ws: dict, meta, totals: dict):
+    def __init__(self, cfg: RewardConfig, ws: dict, meta, totals: dict, family: str = ""):
         self.cfg, self.meta, self.totals = cfg, meta, totals
+        combat = family == "combat"
+        self.kill_scale = cfg.combat_kill_scale if combat else 1.0
+        self.exit_floor = cfg.combat_exit_floor if combat else 1.0
         self.keys = ws["keys"].copy()
         self.kills = ws["kills"]
         self.damage = ws["damage_taken"]
@@ -94,7 +100,8 @@ class RewardTracker:
 
         kills = ws["kills"] - self.kills
         if kills > 0:
-            r["kill"] = max(0.0, min(c.kill * kills, c.kill_cap - self.kill_paid))
+            each, cap = c.kill * self.kill_scale, c.kill_cap * self.kill_scale
+            r["kill"] = max(0.0, min(each * kills, cap - self.kill_paid))
             self.kill_paid += r["kill"]
         self.kills = ws["kills"]
 
@@ -105,7 +112,9 @@ class RewardTracker:
             r["death"] = -c.death * (1.0 + 0.5 * remaining)
         if ws["exit_reached"]:
             self.counts["exit"] = 1
-            r["exit"] = c.exit + c.exit_health_bonus * min(ws["health"], 100.0) / 100.0 + c.exit_time_bonus * remaining
+            killed = min(1.0, ws["kills"] / self.totals["monsters"]) if self.totals["monsters"] else 1.0
+            share = self.exit_floor + (1.0 - self.exit_floor) * killed
+            r["exit"] = share * (c.exit + c.exit_health_bonus * min(ws["health"], 100.0) / 100.0 + c.exit_time_bonus * remaining)
 
         self.positions.append((ws["x"], ws["y"]))
         x0, y0 = self.positions[0]

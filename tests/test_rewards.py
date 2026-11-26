@@ -55,6 +55,26 @@ def test_finishing_dominates_farming():
     assert c.grid * 300 * 1.0 < finishing + 2
 
 
+def test_combat_only_rewards_leave_other_maps_unchanged(tmp_path):
+    env = TrainEnv(corridor(tmp_path / "e.wad"), "MAP01")
+    env.reset(seed=0)
+    ws = env.world_state()
+    cfg = RewardConfig(combat_exit_floor=0.5, combat_kill_scale=2.5)
+
+    def paid(config, family, kills):
+        tracker = RewardTracker(config, ws, env.meta, {"monsters": 4, "keys": 0, "locks": 0}, family)
+        r = tracker.step({**ws, "kills": ws["kills"] + kills, "exit_reached": True})[2]
+        return r["exit"], r["kill"]
+
+    full, one = paid(RewardConfig(), "combat", 0)[0], RewardConfig().kill
+    assert paid(cfg, "combat", 0) == pytest.approx((0.5 * full, 0.0))
+    assert paid(cfg, "combat", 2) == pytest.approx((0.75 * full, 2 * 2.5 * one))
+    assert paid(cfg, "combat", 4) == pytest.approx((full, 4 * 2.5 * one))
+    assert paid(cfg, "gauntlet", 2) == pytest.approx((full, 2 * one))
+    assert paid(RewardConfig(), "combat", 2) == pytest.approx((full, 2 * one))
+    env.close()
+
+
 def test_death_costs_more_when_early(tmp_path):
     env = TrainEnv(corridor(tmp_path / "d.wad"), "MAP01")
     env.reset(seed=0)

@@ -39,6 +39,7 @@ class EnvConfig:
     variants_per_bucket: int = 6  # generated maps per (family, level) in a worker's pack
     rotate_episodes: int = 150  # worker episodes before its pack is regenerated
     mirror_prob: float = 0.5
+    variety: float = 0.0  # share of generated maps with uneven shapes, steps and ledges
     freedoom_slots: int = 1  # environments per worker that switch to Freedoom maps later in training
     reward: RewardConfig = field(default_factory=RewardConfig)
 
@@ -74,7 +75,7 @@ class ScenarioPool:
                      for f in buckets for l in range(NUM_LEVELS) for _ in range(self.cfg.variants_per_bucket)]
         replay = [tuple(s) for s in directive["nemesis"]]
         path = os.path.join(self.dir, f"pack{self.generation}.wad")
-        entries = write_pack(path, scenarios + replay)
+        entries = write_pack(path, scenarios + replay, self.cfg.variety)
         self.entries, self.nemesis = {}, []
         for i, e in enumerate(entries):
             e["wad"] = path
@@ -141,7 +142,7 @@ class EnvSlot:
             "locks": int((self.env.meta.door_locks > 0).sum()),
         }
         self.spawn = (ws["x"], ws["y"])
-        self.tracker = RewardTracker(self.cfg.reward, ws, self.env.meta, self.totals)
+        self.tracker = RewardTracker(self.cfg.reward, ws, self.env.meta, self.totals, entry["family"])
         self.mirror = self.rng.random() < self.cfg.mirror_prob
         self.prev_action = np.zeros(O.NUM_BUTTONS, np.float32)
         self.seen_key = self.seen_lock = 0.0

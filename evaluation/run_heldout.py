@@ -78,7 +78,8 @@ def play(agent, env: TrainEnv, entry: dict, seed: int, on_step=None) -> dict:
 
 
 def evaluate(weights, device: str = "cpu", maps_per_tier: int = 6, episodes: int = 1, mode: str | None = None,
-             temperature: float | None = None, freedoom: bool = True, verbose: bool = True) -> dict:
+             temperature: float | None = None, freedoom: bool = True, verbose: bool = True,
+             variety: float = 0.0) -> dict:
     agent = load_agent(weights, device)
     if mode:
         agent.mode = mode
@@ -86,7 +87,7 @@ def evaluate(weights, device: str = "cpu", maps_per_tier: int = 6, episodes: int
         agent.temperature = temperature
     tmp = tempfile.mkdtemp(prefix="streamed-mind-eval-")
     try:
-        suite = build_suite(tmp, maps_per_tier, freedoom)
+        suite = build_suite(tmp, maps_per_tier, freedoom, variety)
         env = TrainEnv(suite[0]["wad"], suite[0]["map"], render_buffers=agent.model.cfg.use_depth)
         results = []
         for entry in suite:
@@ -127,11 +128,15 @@ def main(argv=None) -> int:
     ap.add_argument("--mode", choices=("sample", "greedy"))
     ap.add_argument("--temperature", type=float)
     ap.add_argument("--no-freedoom", action="store_true")
+    ap.add_argument("--variety", type=float, default=0.0,
+                    help="share of generated maps with uneven shapes, steps and ledges (1 = all); not comparable with 0")
     ap.add_argument("--json", help="write the full result here")
     ap.add_argument("--run-dir", help="append to eval.jsonl there and keep the best checkpoint as best.pt")
     ap.add_argument("--step", type=int, default=0)
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
+    if args.variety and args.run_dir:
+        ap.error("--run-dir keeps scores on the plain suite only")
 
     with tempfile.TemporaryDirectory() as tmp:
         weights = args.weights
@@ -143,7 +148,7 @@ def main(argv=None) -> int:
             snapshot = shutil.copy(args.ckpt, Path(tmp) / "snapshot.pt")
             weights = export(snapshot, Path(tmp) / "model.pt", mode=args.mode or "sample")
         result = evaluate(weights, args.device, args.maps_per_tier, args.episodes, args.mode, args.temperature,
-                          not args.no_freedoom, verbose=not args.quiet)
+                          not args.no_freedoom, verbose=not args.quiet, variety=args.variety)
         print(format_table(result), flush=True)
         if args.json:
             Path(args.json).write_text(json.dumps(result, indent=2))

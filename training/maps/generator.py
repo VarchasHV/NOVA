@@ -21,6 +21,7 @@ import numpy as np
 from doom_env.wad import Lump, write_wad
 
 from .udmf import LOCK_BLUE, LOCK_RED, LOCK_YELLOW, VOID, Level, Region, Thing, to_udmf
+from .variety import vary
 
 FAMILIES = ("movement", "combat", "explore", "progression", "gauntlet")
 NUM_LEVELS = 5
@@ -55,7 +56,9 @@ def level_rng(family: str, level: int, seed: int) -> np.random.Generator:
     return np.random.default_rng([FAMILIES.index(family), level, seed])
 
 
-def generate(family: str, level: int, seed: int) -> Level:
+def generate(family: str, level: int, seed: int, variety: float = 0.0) -> Level:
+    """`variety` is the share of maps given uneven shapes, steps and ledges (0 = the plain square maps).
+    The same four arguments always give the same map."""
     if family not in FAMILIES or not 0 <= level < NUM_LEVELS:
         raise ValueError(f"unknown scenario {family!r} level {level}")
     rng = level_rng(family, level, seed)
@@ -66,6 +69,10 @@ def generate(family: str, level: int, seed: int) -> Level:
         lv.ticks = int(rng.integers(2100, 4201))
     else:
         lv.ticks = TICKS[level]
+    if variety > 0:
+        extra = np.random.default_rng([FAMILIES.index(family), level, seed, 1])  # leaves the layout's draws alone
+        if extra.random() < variety:
+            vary(lv, extra)
     return lv
 
 
@@ -323,12 +330,12 @@ def map_lumps_for(level: Level, name: str) -> list[Lump]:
     return [Lump(name, b""), Lump("TEXTMAP", to_udmf(level).encode()), Lump("ENDMAP", b"")]
 
 
-def write_pack(path: str | Path, scenarios: list[tuple[str, int, int]]) -> list[dict]:
+def write_pack(path: str | Path, scenarios: list[tuple[str, int, int]], variety: float = 0.0) -> list[dict]:
     """Write many maps into one WAD (switching maps inside one WAD costs ~2 ms, switching WADs
     ~140 ms). Returns one entry per map: name, family, level, seed, ticks."""
     lumps, entries = [], []
     for i, (family, level, seed) in enumerate(scenarios):
-        lv = generate(family, level, seed)
+        lv = generate(family, level, seed, variety)
         name = f"G{i:04d}"
         lumps += map_lumps_for(lv, name)
         entries.append({"map": name, "family": family, "level": level, "seed": seed, "ticks": lv.ticks})
