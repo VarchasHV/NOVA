@@ -30,16 +30,19 @@ def test_valid_actions_and_deterministic_per_map():
     np.testing.assert_array_equal(first, second)  # reset() clears everything and reseeds
 
 
-def test_fallback_when_the_network_raises():
+def test_presses_nothing_when_the_network_raises():
     agent = load_agent(None, "cpu")
 
     def boom(*a, **k):
         raise RuntimeError("kaboom")
 
+    working = agent.model.step
     agent.model.step = boom
-    actions = [agent.act(o) for o in observations(45)]
-    assert all(valid(a) and a[0] == 1 for a in actions) and agent.errors == 45
-    assert actions[0][4] == 1 and actions[25][5] == 1  # alternates turning
+    seq = observations(45)
+    actions = [agent.act(o) for o in seq]
+    assert all(valid(a) and not a.any() for a in actions) and agent.errors == 45
+    agent.model.step = working  # the network is asked again as soon as it works
+    assert valid(agent.act(seq[0])) and agent.errors == 45
 
 
 def test_survives_nan_observation_and_corrupt_state():

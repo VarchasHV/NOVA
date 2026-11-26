@@ -1,7 +1,9 @@
-"""Actor code: everything the submitted agent runs at inference.
+"""The network code lives in `submission/models/`, so that `submission/` works on its own.
 
-Hard rule: nothing in this package may import from `training/` or `evaluation/`.
-
-Import from the submodules (`models.actor`, `models.config`, ...). This file stays empty of imports so
-environment worker processes can use `models.obs` without loading PyTorch.
+This package only points there, which keeps `import models` working for training, evaluation and
+tools. Put no code here.
 """
+
+from pathlib import Path
+
+__path__ = [str(Path(__file__).resolve().parents[1] / "submission" / "models")]

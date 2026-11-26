@@ -25,7 +25,7 @@ Driving the GPU laptops from the Mac: [docs/TRAINING.md](docs/TRAINING.md).
 
 | Folder | Contents |
 |---|---|
-| `models/` | actor only: encoders, odometry, streamed memory, core, action heads |
+| `submission/models/` | actor only: encoders, odometry, streamed memory, core, action heads (`models/` points here) |
 | `submission/` | `DoomAgent` with its safety shell, and exported weights (Git LFS) |
 | `training/` | PPO, rewards, map generator, curriculum ([details](training/README.md)) |
 | `evaluation/` | held-out suite, local scorer, latency profile |

@@ -20,7 +20,7 @@ rays + velocity + last 3 actions ── neural odometry ── pose ─▶ Strea
                                                   K = 32 slots ── readout (128) ─┤
                                                                       GRU core (256)
                                                      factorised action heads ◀────┘
-                                          safety shell (validate, fallback) ─▶ 9 buttons
+                                          safety shell (validate, idle on error) ─▶ 9 buttons
 ```
 
 About 1.1 M parameters; under 1 ms per decision on one CPU thread.

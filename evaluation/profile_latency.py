@@ -50,7 +50,7 @@ def main(argv=None) -> int:
             agent.reset()
     env.close()
     rest = np.array(times[1:])
-    print(f"weights loaded: {agent.weights_loaded}   device: {agent.device}   fallback actions: {agent.errors}")
+    print(f"weights loaded: {agent.weights_loaded}   device: {agent.device}   agent errors: {agent.errors}")
     print(f"init {init:.2f}s | reset {1000 * reset:.2f}ms | first act {times[0]:.1f}ms")
     print(f"act mean {rest.mean():.2f}ms | p99 {np.percentile(rest, 99):.2f}ms | max {rest.max():.1f}ms "
           f"(budget {AGENT_MS_PER_STEP:.0f}ms)")
@@ -66,7 +66,7 @@ def main(argv=None) -> int:
 
         print(f"peak VRAM {torch.cuda.max_memory_reserved() / 2**20:.0f} MB (limit {MAX_VRAM_MB} MB)")
     ok = rest.mean() < 15 and np.percentile(rest, 99) < 100 and agent.errors == 0
-    print("PASS" if ok else "CHECK: above target or fallback actions were used")
+    print("PASS" if ok else "CHECK: above target or the agent raised errors")
     return 0 if ok else 1
 
 

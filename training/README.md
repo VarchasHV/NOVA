@@ -1,6 +1,6 @@
 # Training
 
-Training-only code. Nothing here is imported by `submission/` or `models/`.
+Training-only code. Nothing here is imported by `submission/`.
 
 | File | Role |
 |---|---|

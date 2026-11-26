@@ -1,8 +1,9 @@
 """Streamed Mind: evaluation entry point. The scorer instantiates DoomAgent from this file.
 
-Contract: docs/CONTRACT.md §6. Every action comes from the trained network in `models/`. The code
-around it is a safety shell: it cleans inputs, validates outputs and, only if something raises,
-returns a simple moving action so the player is never frozen for the rest of a map.
+Contract: docs/CONTRACT.md §6. Every action comes from the trained network in `submission/models/`. The code
+around it is a safety shell: it cleans inputs and validates outputs. If something raises, no button
+is pressed for that decision (an escaping exception would stop the agent for the rest of the map),
+and the network is asked again at the next one. There is no hand-written behaviour.
 """
 
 from __future__ import annotations
@@ -15,8 +16,8 @@ import numpy as np
 
 SUBMISSION_DIR = Path(__file__).resolve().parent
 WEIGHTS_PATH = SUBMISSION_DIR / "weights" / "model.pt"
-if str(SUBMISSION_DIR.parent) not in sys.path:
-    sys.path.insert(0, str(SUBMISSION_DIR.parent))
+if str(SUBMISSION_DIR) not in sys.path:  # `models` is the folder next to this file
+    sys.path.insert(0, str(SUBMISSION_DIR))
 
 import torch  # noqa: E402
 
@@ -81,7 +82,6 @@ class DoomAgent:
         """Called before every map: forget everything."""
         self.state = None
         self.prev_action = np.zeros(O.NUM_BUTTONS, np.float32)
-        self.calls = 0
         self.rng = torch.Generator().manual_seed(SEED)
         self.last_info: dict = {}
         self.last_pose = None
@@ -102,24 +102,17 @@ class DoomAgent:
             idx = P.greedy(logits) if self.mode == "greedy" else P.sample(logits, self.temperature, self.rng)
             return P.to_buttons(idx)[0].numpy()
 
-    def _fallback(self) -> np.ndarray:
-        action = np.zeros(O.NUM_BUTTONS, np.int8)
-        action[0] = 1  # forward
-        action[4 if (self.calls // 20) % 2 == 0 else 5] = 1  # turn, alternating so it does not circle
-        return action
-
     def act(self, observation: dict) -> np.ndarray:
         """Return a MultiBinary action: int8 array of shape (9,) with values in {0, 1}."""
-        self.calls += 1
         try:
             action = np.asarray(self._decide(observation))
             if action.shape != (O.NUM_BUTTONS,) or not np.isfinite(action).all():
                 raise ValueError(f"bad action {action!r}")
             action = (action > 0.5).astype(np.int8)
-        except Exception:  # noqa: BLE001 - a crash would freeze the player for the whole map
+        except Exception:  # noqa: BLE001 - a crash would stop the agent for the whole map
             self.errors += 1
             if self.errors <= 3:
                 traceback.print_exc()
-            action = self._fallback()
+            action = np.zeros(O.NUM_BUTTONS, np.int8)  # press nothing
         self.prev_action = action.astype(np.float32)
         return action
