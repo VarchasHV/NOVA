@@ -1,0 +1,32 @@
+name: variety_s4
+hypothesis: >
+  Practising on uneven maps (bent corners, steps, pillars, ledges) and more Freedoom maps makes the
+  agent survive and finish unfamiliar maps better, without losing score on the plain held-out suite.
+  Compare with the `full` run on the plain suite and with `--variety 1`.
+# Started on 2026-11-26 from the `full` run's checkpoint (see docs/EXPERIMENTS.md). Compared with
+# configs/full.yaml: variety, two Freedoom environments per worker, a higher kill reward in combat
+# practice maps only (the exit still pays in full), and the ASUS worker count.
+seed: 4
+total_steps: 300000000
+max_hours: 14
+num_workers: 10
+envs_per_worker: 8
+odom_warmup_updates: 60
+eval_minutes: 30
+eval_maps_per_tier: 6     # the plain suite, so held-out scores stay comparable with the other runs
+model:
+  memory: true
+  slots: 32
+  memory_mode: anchored
+  two_timescale: false
+  use_depth: false
+ppo:
+  rollout: 128
+  seq_len: 32
+  minibatches: 8
+  epochs: 3
+env:
+  variety: 0.6             # share of generated training maps that are uneven
+  freedoom_slots: 2        # was 1 of 8 environments per worker
+  reward:
+    combat_kill_scale: 2.0   # combat maps: 0.6 per kill instead of 0.3
