@@ -226,3 +226,4 @@ _vizdoom.ini
 # Training outputs (checkpoints, logs); weights for submission go in submission/weights via Git LFS
 runs/
 *.png
+!docs/brief/*.png
