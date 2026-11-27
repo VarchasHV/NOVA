@@ -31,7 +31,7 @@ Evaluated across two held-out sets of 249 episodes each (240 generated maps + 3 
 
 For memory ablations, known weaknesses, training details, and older checkpoints, see [architecture.md](architecture.md).
 
-## Installation
+## Installation (DEMO)
 
 ### 1. Make sure Git LFS downloads the real model weights
 
@@ -76,6 +76,147 @@ Useful options:
 
 > **Note:** `tools/watch.py` passes `--ckpt` through `training/export.py`, which reads a training checkpoint's `counters["steps"]` key. When running the already-exported `submission/weights/model.pt`, it will print `trained for 0.0M decisions` in the terminal even though it is running the 58.4M-step model.
 
+
+## Setup
+
+On macOS the default shell (zsh) does not ignore comments you paste; run the first line once per terminal.
+
+```bash
+setopt interactivecomments                                     # macOS zsh only: allow the comments below
+git lfs install                                                # once per computer, so model files download
+git clone https://github.com/VarchasHV/NOVA.git && cd NOVA     # get the code and the model
+git lfs pull                                                   # fetch the model file if it is only a pointer
+uv sync                                                        # install Python packages (CUDA build on Linux and Windows)
+uv run python validate.py                                      # official checks on the model in submission/
+```
+
+If any output says `using an UNTRAINED network`, the model file did not download: run `git lfs pull` again.
+An untrained network plays very badly.
+
+## Training guide
+
+Training needs an NVIDIA GPU. Our runs took 14 hours on an RTX 3050 laptop (about 72M decisions); `configs/full.yaml`
+runs for 16 hours unless you set `max_hours`.
+
+### 1. Check the computer
+
+```bash
+uv run python tools/check_setup.py                             # GPU, speed test, suggested worker settings
+uv run python -m training.train --config configs/smoke.yaml    # short run of the whole pipeline, up to 1 hour
+```
+
+### 2. Train
+
+```bash
+uv run python -m training.train --config configs/full.yaml                      # main run; saves to runs/full/
+uv run python -m training.train --config configs/full.yaml                      # the same command again resumes it
+uv run python -m training.train --config configs/full.yaml --set max_hours=14   # total hours, including time already trained
+uv run python -m training.train --config configs/full.yaml --set num_workers=10 # use the value check_setup.py suggests
+uv run tensorboard --logdir runs                                                # training curves at http://localhost:6006
+```
+
+`Ctrl+C` saves a checkpoint and stops. If you started with `--set` options, pass the same ones when resuming.
+
+| File in `runs/<name>/` | What it is |
+|---|---|
+| `ckpt_latest.pt` | newest state; resuming uses this |
+| `best.pt` | best score so far on the 27-game test that runs during training |
+| `ckpt_XXXXXM.pt` | hourly snapshots, named by millions of decisions |
+| `eval.jsonl` | every test score |
+
+### 3. Continue from a trained checkpoint
+
+Copy it into a new run folder, so the original stays untouched. `max_hours` must be larger than the hours the
+checkpoint has already trained.
+
+```bash
+mkdir -p runs/more && cp runs/full/best.pt runs/more/ckpt_latest.pt                              # start a copy
+uv run python -m training.train --config configs/full.yaml --run-name more --set max_hours=16    # keep training it
+```
+
+Only training checkpoints can be continued. The model files in git hold the network alone, without the optimiser or critic.
+
+### 4. Other experiments
+
+Each file in `configs/` is one experiment ([which is which](training/README.md#configs)).
+
+```bash
+uv run python -m training.train --config configs/gru_baseline.yaml   # no spatial memory (not run by us)
+uv run python -m training.train --config configs/memory_k64.yaml     # 64 memory slots (not run by us)
+```
+
+### 5. Train on another laptop over SSH
+
+Set up SSH first ([docs/TRAINING.md](docs/TRAINING.md)). Replace `acer` with your SSH alias.
+
+```bash
+tools/remote.sh setup acer                        # copy the code, install packages, check speed
+tools/remote.sh start acer configs/full.yaml      # start or resume training in tmux
+tools/remote.sh status acer                       # GPU load and the last log lines
+tools/remote.sh stop acer                         # save a checkpoint and stop
+tools/remote.sh fetch acer                        # copy checkpoints back to runs/acer/
+python3 tools/dashboard.py --hosts acer           # live page at http://localhost:8765
+uv run python tools/watch.py acer --best          # watch that laptop's best checkpoint play
+```
+
+## Using different models
+
+The agent always loads `submission/weights/model.pt`. Earlier versions of that file are kept in git history.
+
+| Commit | Model | Decisions | File hash starts |
+|---|---|---|---|
+| `c6dbfd5` | best checkpoint (**submitted**) | 58.4M | `a5b6f43e` |
+| `9e9a299` | earlier checkpoint | 40.5M | `824eefb4` |
+| `f00a8f1` | earlier checkpoint | 24.9M | `80b3fc46` |
+
+All three come from the same training run and sample their actions at temperature 0.5.
+
+### Get an earlier model
+
+This needs the full history (not a `--depth 1` clone).
+
+```bash
+mkdir -p runs/models                                                                      # a folder git ignores
+git cat-file --filters f00a8f1:submission/weights/model.pt > runs/models/main_24M.pt      # the 24.9M model
+git cat-file --filters 9e9a299:submission/weights/model.pt > runs/models/main_40M.pt      # the 40.5M model
+shasum -a 256 runs/models/*.pt                                                            # compare with the table
+```
+
+### Test a model without installing it
+
+```bash
+uv run python -m evaluation.run_heldout                                                   # the installed model, 27 games
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt                  # another model file
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --maps-per-tier 12 --episodes 3   # more games, steadier score
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --variety 1      # maps with steps and ledges
+uv run python -m evaluation.run_heldout --ckpt runs/full/best.pt --temperature 0.5        # a training checkpoint
+uv run python tools/viz_topdown.py --weights runs/models/main_40M.pt --tier 3 --out episode.png   # top-down picture of one game
+uv run python tools/watch.py --ckpt runs/models/main_40M.pt                                # watch it play (uses temperature 1.0)
+```
+
+Compare models on the same options only. A 27-game score can swing by about 20 points, so small gaps mean little.
+
+### Install a model
+
+```bash
+cp runs/models/main_40M.pt submission/weights/model.pt                       # use a downloaded model
+uv run python -m training.export --ckpt runs/full/best.pt --temperature 0.5 # or export a checkpoint (the default temperature is 1.0)
+uv run python validate.py                                                   # official checks
+uv run python validate.py --map path/to/map.wad:MAP01                       # try it on your own map
+uv run python -m evaluation.profile_latency                                 # decision speed on one CPU thread
+git checkout -- submission/weights/model.pt                                 # undo: go back to the committed model
+```
+
+To publish it, commit `submission/weights/model.pt` (Git LFS handles the file) and push. The scorer reads the
+last commit on the `main` branch.
+
+## Other tools
+
+```bash
+uv run pytest                          # test suite
+uv run python tools/demo.py all        # demo pages in runs/demo/ (replay, killcam, deaths, curves)
+uv run python validate.py --docker     # official checks inside Docker (build once: docker build -t devforge-doom .)
+```
 ## Repository layout
 
 | Folder | Contents |
