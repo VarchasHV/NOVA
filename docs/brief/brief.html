@@ -73,9 +73,9 @@
     streamed out when the budget is full. The memory is read by attention conditioned on each slot’s
     distance and bearing from the agent’s current pose. The design follows how open-world games keep a bounded set of world chunks loaded. The agent is trained from scratch with our own recurrent PPO, an asymmetric privileged critic, a reward
     aligned with the official scoring categories, and a curriculum over procedurally generated and
-    solvability-checked maps. On about 250 held-out maps across all four tiers, it reaches the exit in
-    64&thinsp;% of episodes and deliberately collects keys and opens locks in long-horizon levels. Wiping its memory at every step
-    lowers the score by 50 points (95&thinsp;% CI&nbsp;36–65). A decision takes 1.7&thinsp;ms on one CPU thread.
+    solvability-checked maps. On two sets of about 250 held-out episodes across all four tiers, the submitted checkpoint reaches the exit in
+    65–73&thinsp;% of them and deliberately collects keys and opens locks in long-horizon levels. Wiping its memory at every step
+    lowers the score by 50 points (95&thinsp;% CI&nbsp;36–65). A decision takes under 1&thinsp;ms on one CPU thread.
   </div>
 </header>
 
@@ -275,7 +275,7 @@ on switch exits (<i>aim</i>).
 <h2>4&ensp;Experiments</h2>
 <p>
 <b>Protocol.</b> Every policy plays the same held-out suite through the real <span class="mono">submission/agent.py</span>:
-243 generated maps that were never used in training, with plain and uneven geometry, plus Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
+240 generated maps that were never used in training, with plain and uneven geometry, plus 3 Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
 Our local scorer mirrors the official categories and weights the tiers 1:2:3:4 (the official weights are hidden).
 Intervals come from a paired bootstrap that resamples maps within each tier.
 </p>
@@ -293,15 +293,15 @@ The last row is the weighted change from the earlier 40.5&thinsp;M checkpoint, w
 <tr><td>3 Progression</td><td>145</td><td>58%</td><td class="best">160</td><td class="best">72%</td><td>153</td><td>68%</td></tr>
 <tr><td>4 Gauntlet</td><td>97</td><td>33%</td><td>107</td><td>39%</td><td>107</td><td class="best">42%</td></tr>
 <tr><td>Weighted</td><td>118.8</td><td>57%</td><td>127.5</td><td>64%</td><td class="best">128.3</td><td>64%</td></tr>
-<tr><td>Δ vs 40.5&thinsp;M</td><td>—</td><td></td><td>+9.0</td><td class="ci">[0.5, 17.7]</td><td>+9.9</td><td class="ci">[0.6, 19.0]</td></tr>
+<tr><td>Δ vs 40.5&thinsp;M</td><td>—</td><td></td><td>+8.6</td><td class="ci">[0.5, 17.1]</td><td>+9.5</td><td class="ci">[1.0, 18.1]</td></tr>
 </tbody>
 </table>
 
 <p style="margin-top:1.6mm">
-<b>Scaling and fine-tuning.</b> Training from 40.5&thinsp;M to 62&thinsp;M decisions raises the weighted score by 9 points, and the 95&thinsp;% CI excludes zero.
+<b>Scaling and fine-tuning.</b> Training from 40.5&thinsp;M to 62&thinsp;M decisions raises the weighted score by 8.6 points, and the 95&thinsp;% CI excludes zero.
 The largest gain is in tier 3: the agent reaches the exit 14 points more often after collecting keys and unlocking doors. The two later runs
-are statistically tied (Δ&nbsp;0.9, CI&nbsp;−8.5 to 10.0). The aim run is ahead on exploration and the gauntlet, and the main run is ahead on progression.
-In tier 3 the main policy collects 1.65 keys and opens 1.63 locks per map on average, which earns 85&thinsp;% of the available progression credit, and it visits 92&thinsp;% of the sectors.
+are statistically tied (Δ&nbsp;0.9, CI&nbsp;−8.3 to 9.7). The aim run is ahead on exploration and the gauntlet, and the main run is ahead on progression.
+On a second set of 249 new episodes the aim run led 40.5&thinsp;M by only 3.3 (CI −4.3 to 10.8) and tied both final checkpoints; we submit it.
 </p>
 
 <figure>
@@ -355,15 +355,15 @@ exploration and progression and almost absent in pure combat, which is the patte
 
 <p>
 <b>Deployment.</b> All of BBB’s actions come from the network. The code around it only checks input and output
-shapes and presses nothing for one decision if an exception occurs. The weights are 5.1&thinsp;MB. A decision takes 1.7&thinsp;ms on average on one CPU thread, against a budget of 40&thinsp;ms, so we use the CPU even when a GPU is offered.
+shapes and presses nothing for one decision if an exception occurs. The weights are 4.3&thinsp;MB. A decision takes under 1&thinsp;ms on average on one CPU thread, against a budget of 40&thinsp;ms, so we use the CPU even when a GPU is offered.
 </p>
 
 <h2>5&ensp;Limitations and future work</h2>
 <p>
 BBB’s odometry drifts over long episodes, so anchors are approximate. Door and key colours cannot be
-observed, so the memory stores “a locked door” rather than “the red door”. In a 240-map stress test, exit rates for walk-over exits
+observed, so the memory stores “a locked door” rather than “the red door”. In a 240-map test at 40.5&thinsp;M, exit rates for walk-over exits
 are 61–100&thinsp;% but only 31–52&thinsp;% for switch exits: pressing USE against the right wall is the main failure. Tier 4
-remains hard, with deaths in 45&thinsp;% of episodes, and the agent kills only 15&thinsp;% of enemies. Next steps: a hierarchical manager–worker policy and odometry loop closure.
+remains hard, with deaths in 36–41&thinsp;% of episodes, and the agent kills only 15&thinsp;% of enemies. Next steps: a hierarchical manager–worker policy and odometry loop closure.
 </p>
 
 <h2>References</h2>

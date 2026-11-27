@@ -56,15 +56,8 @@ addressing.
 
 ## Results
 
-Fill from `runs/<name>/eval.jsonl` (same suite, same seeds). Leave a cell empty if not measured.
-
-| Configuration | Decisions | T1 combat | T2 explore | T3 progression | T4 gauntlet | Weighted |
-|---|---|---|---|---|---|---|
-| GRU only (`gru_baseline`) | | | | | | |
-| Streamed Memory, K = 32 (`full`) | | | | | | |
-| Streamed Memory, K = 64 (`memory_k64`) | | | | | | |
-
-Local scores are our estimate: the official weights are not public.
+Held-out scores, ablations and the final model selection are in [EXPERIMENTS.md](EXPERIMENTS.md) and the
+[2-page brief](brief.pdf). Local scores are our estimate: the official weights are not public.
 
 ## Limits
 

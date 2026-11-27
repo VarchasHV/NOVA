@@ -23,12 +23,12 @@ three rooms ago" without being given a map.
   uneven floors. A solver checks every level, and Freedoom maps add variety.
 - **Curriculum Director**: trains most on scenarios the agent solves about half the time, replays seeds it failed ("nemesis"
   episodes) and mirrors episodes left to right at random.
-- **Fast enough to spare**: 1.7 ms per decision on one CPU thread (the budget is 40 ms), with 5.1 MB of weights.
+- **Fast enough to spare**: under 1 ms per decision on one CPU thread (the budget is 40 ms), with 4.3 MB of weights.
 - **Every action comes from the network.** The code around it only checks inputs and outputs. It contains no rules, pathfinding or aim code.
 
 ## Results
 
-Evaluation used 243 generated maps that were never used in training, plus Freedoom maps, across all four tiers (249 episodes, fixed seeds). Each policy ran through the real
+Evaluation used 240 generated maps that were never used in training, plus 3 Freedoom maps, across all four tiers (249 episodes, fixed seeds). Each policy ran through the real
 `submission/agent.py` and was scored by our local copy of the scorer (tiers weighted 1:2:3:4). The organisers' exact weights are not public, so the
 absolute numbers are estimates.
 
@@ -38,15 +38,19 @@ absolute numbers are estimates.
 | 2 Exploration | 114 · exit 60% | 115 · exit 58% | **127 · exit 67%** |
 | 3 Progression | 145 · exit 58% | **160 · exit 72%** | 153 · exit 68% |
 | 4 Gauntlet | 97 · exit 33% | 107 · exit 39% | 107 · exit 42% |
-| **Weighted** | 118.8 | 127.5 (+9.0, 95% CI 0.5 to 17.7) | **128.3** (+9.9, 95% CI 0.6 to 19.0) |
+| **Weighted** | 118.8 | 127.5 (+8.6, 95% CI 0.5 to 17.1) | **128.3** (+9.5, 95% CI 1.0 to 18.1) |
 
-**Does the memory help?** Yes. Wiping all memory at every step costs **50 points** (95% CI 36 to 65). Zeroing only
+**Submitted model: the aim run at 61.0M decisions.** On a second set of 249 episodes with new maps it scored 135.8,
+against 132.5 for the 40.5M checkpoint (+3.3, 95% CI −4.3 to 10.8). The final checkpoints (71.9M and 72.3M) were tied
+with it (−1.1 and −0.4).
+
+**Does the agent use its memory?** Yes (ablations of the main run at 34.8M decisions; we trained no no-memory baseline). Wiping all memory at every step costs **50 points** (95% CI 36 to 65). Zeroing only
 the slot readout costs **10 points** (95% CI 1 to 20), mostly in exploration and progression, which is where remembering
 places should matter.
 
 ![Memory ablation](docs/brief/memory_ablation.png)
 
-**Known weaknesses:** switch exits (31–52% exit rate, compared with 61–100% for walk-over exits), deaths in tier 4 (about 45% of episodes),
+**Known weaknesses:** switch exits (31–52% exit rate, compared with 61–100% for walk-over exits, measured on the 40.5M model), deaths in tier 4 (36–41% of episodes),
 and a low kill rate (about 15% of enemies).
 
 ## Train, evaluate, submit

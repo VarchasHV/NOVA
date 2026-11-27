@@ -7,7 +7,7 @@ and compare on the same held-out suite.
 ## How we compare policies
 
 - Every policy plays through the real `submission/agent.py`, exactly as the scorer would run it.
-- **Held-out suite:** 243 generated maps that were never used in training, with plain and uneven geometry, plus Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
+- **Held-out suite:** 240 generated maps that were never used in training, with plain and uneven geometry, plus 3 Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
 - **Score:** our local scorer (`evaluation/local_scorer.py`) mirrors the four official categories and weights the tiers 1:2:3:4. The official weights are hidden, so absolute numbers are estimates.
 - **Uncertainty:** a paired bootstrap (4,000 resamples) that resamples maps within each tier. A difference counts as real only when its 95% interval excludes zero.
 
@@ -15,8 +15,8 @@ and compare on the same held-out suite.
 
 | Run | Config | Hypothesis | Result |
 |---|---|---|---|
-| full | `configs/full.yaml` | the main candidate for submission | 62.0M decisions in 11.5 h. Weighted score 127.5, compared with 118.8 at 40.5M (**+9.0**, CI 0.5 to 17.7). The largest gain is in tier 3 (exit rate 58% → 72%). |
-| aim_s5 (ASUS) | `configs/asus_aim.yaml`, resumed from `full` at 49.8M | a damage reward improves aiming; more switch practice improves switch exits | 61.0M decisions. Weighted 128.3, statistically tied with `full` (+0.9, CI −8.5 to 10.0). Better in tier 2 (127 vs 115) and slightly better in tier 4; worse in tier 3. |
+| full | `configs/full.yaml` | the main candidate for submission | 62.0M decisions in 11.5 h. Weighted score 127.5, compared with 118.8 at 40.5M (**+8.6**, CI 0.5 to 17.1). The largest gain is in tier 3 (exit rate 58% → 72%). |
+| aim_s5 (ASUS) | `configs/asus_aim.yaml`, resumed from `full` at 49.8M | a damage reward improves aiming; more switch practice improves switch exits | 61.0M decisions. Weighted 128.3, statistically tied with `full` (+0.9, CI −8.3 to 9.7). Better in tier 2 (127 vs 115) and slightly better in tier 4; worse in tier 3. |
 | variety_s4 (ASUS) | `configs/asus_variety.yaml`, resumed from `full` at 32.6M | uneven practice maps and more Freedoom improve survival and exits on unfamiliar maps | rejected: 8.8 points below `full` (CI 1.7 to 16.2) |
 | fight_s3 (ASUS) | `configs/asus_fight.yaml`, resumed from `full` | combat-only exit and kill rewards raise kills without more deaths or weaker navigation | rejected: slightly more kills but fewer exits (plain 115.9 vs 124.1, uneven 102.4 vs 113.9, 81 games each) |
 | gru_baseline | `configs/gru_baseline.yaml` | no memory loses on tiers 3 and 4 | not run (no time); replaced by the memory ablations below |
@@ -34,6 +34,21 @@ and compare on the same held-out suite.
 | Deaths in tier 4 | 51% | 45% | 41% |
 
 Source: `runs/pick0445/compare.json` (04:45, 27 Nov).
+
+## Final selection
+
+A second set of 249 episodes on new maps (generator seeds offset by 900 instead of 500), run after both trainings
+finished. Rule fixed before the results: keep `aim_s5` 61.0M unless another model beats it with a 95% interval above zero.
+
+| Model | Weighted | Δ vs `aim_s5` 61.0M (95% CI) | Exit rate | Deaths |
+|---|---|---|---|---|
+| `aim_s5` 61.0M (**submitted**) | 135.8 | — | 73% | 12% |
+| `aim_s5` best.pt (65.8M) | 136.4 | +0.6 (−7.8 to +9.2) | 74% | 12% |
+| `full` final, 72.3M | 135.4 | −0.4 (−8.7 to +8.0) | 72% | 13% |
+| `aim_s5` final, 71.9M | 134.7 | −1.1 (−9.3 to +7.6) | 71% | 12% |
+| `full` 40.5M | 132.5 | −3.3 (−10.8 to +4.3) | 69% | 13% |
+
+Source: `runs/pick0730/final.json`.
 
 ## Memory ablations
 
