@@ -38,7 +38,7 @@ def main(argv=None) -> int:
     from training.env import TrainEnv
 
     agent = load_agent(args.weights, "cpu")
-    tmp = tempfile.mkdtemp(prefix="streamed-mind-viz-")
+    tmp = tempfile.mkdtemp(prefix="bbb-viz-")
     try:
         entry = [e for e in build_suite(tmp, args.index + 1, freedoom=False) if e["tier"] == args.tier][args.index]
         env = TrainEnv(entry["wad"], entry["map"], render_buffers=agent.model.cfg.use_depth)

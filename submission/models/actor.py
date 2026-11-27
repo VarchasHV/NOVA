@@ -31,7 +31,7 @@ class StepOutput(NamedTuple):
     info: dict
 
 
-class StreamedMindActor(nn.Module):
+class BBBActor(nn.Module):
     def __init__(self, cfg: ModelConfig):
         super().__init__()
         self.cfg = cfg

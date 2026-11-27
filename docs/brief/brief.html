@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BBB: Project Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<style>
+  @page { size: A4; margin: 14mm 14mm 13mm 14mm; }
+  :root { --ink:#111; --muted:#555; --rule:#999; --accent:#8a1c1c; --fill:#f4f1ec; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin:0; background:#fff; color:var(--ink); font-family:"STIX Two Text","Times New Roman",serif;
+         font-size:8.9pt; line-height:1.27; text-align:justify; hyphens:auto; -webkit-hyphens:auto; }
+  .paper { width:182mm; margin:0 auto; }
+  header { text-align:center; margin-bottom:3.2mm; }
+  .venue { font-family:Inter,Helvetica,sans-serif; font-size:6.8pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:16.5pt; line-height:1.15; font-weight:700; margin:2.2mm 0 1.6mm; }
+  .authors { font-size:9.6pt; }
+  .affil { font-size:8pt; color:var(--muted); font-style:italic; margin-top:.4mm; }
+  .abstract { margin:3mm 9mm 0; font-size:8.5pt; line-height:1.27; }
+  .abstract b { font-variant:small-caps; letter-spacing:.03em; }
+  .cols { column-count:2; column-gap:6mm; }
+  h2 { font-size:10pt; font-weight:700; margin:2.6mm 0 1mm; break-after:avoid; text-align:left; }
+  h3 { font-size:9pt; font-weight:700; font-style:italic; margin:1.8mm 0 .6mm; break-after:avoid; display:inline; }
+  h3 + p { display:inline; }
+  p { margin:0 0 1.1mm; }
+  p.cont { text-indent:0; }
+  ul.contrib { margin:.6mm 0 1.2mm; padding-left:4mm; }
+  ul.contrib li { margin-bottom:.4mm; }
+  figure { margin:2mm 0 2.2mm; break-inside:avoid; }
+  figure.wide { column-span:all; margin:2.4mm 0 3mm; }
+  figcaption { font-size:7.9pt; line-height:1.25; margin-top:1mm; text-align:justify; }
+  figcaption b { font-weight:700; }
+  table { border-collapse:collapse; width:100%; font-size:7.8pt; line-height:1.2; font-variant-numeric:tabular-nums; }
+  caption { caption-side:top; font-size:7.9pt; text-align:justify; margin-bottom:1mm; line-height:1.25; }
+  th, td { padding:.55mm 1.1mm; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  thead tr:first-child th { border-top:1.1px solid #000; }
+  thead tr:last-child th { border-bottom:.6px solid #000; }
+  tbody tr:last-child td { border-bottom:1.1px solid #000; }
+  th { font-weight:600; }
+  td.best { font-weight:700; }
+  .ci { color:var(--muted); font-size:7pt; }
+  .katex { font-size:1.02em; }
+  .katex-display { margin:1.1mm 0; }
+  .eqn { display:flex; align-items:center; }
+  .eqn .m { flex:1; }
+  .eqn .n { width:6mm; text-align:right; }
+  .refs { font-size:7.1pt; line-height:1.18; padding-left:4.2mm; margin:.6mm 0 0; text-align:left; }
+  .refs li { margin-bottom:.35mm; }
+  .sc { font-variant:small-caps; letter-spacing:.02em; }
+  code, .mono { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:7.4pt; }
+  svg text { font-family:Inter,Helvetica,sans-serif; }
+</style>
+</head>
+<body>
+<div class="paper">
+
+<header>
+  <div class="venue">Yugaantar 2026 · DevForge · Track 1 “Can It Play DOOM?” · Project brief</div>
+  <h1>BBB (Bictor Bon Boom): Budgeted, Position-Anchored<br>Spatial Memory for Zero-Shot DOOM Play</h1>
+  <div class="authors">Team NOVA</div>
+  <div class="affil">github.com/VarchasHV/NOVA</div>
+  <div class="abstract"><b>Abstract.</b>
+    We present <i>BBB (Bictor Bon Boom)</i>, a 1.07&thinsp;M-parameter recurrent agent that plays unseen DOOM
+    levels from ego-centric telemetry alone. The core of BBB is a <i>Streamed Memory</i>: a fixed budget of
+    32 slots, each anchored to a pose that the agent estimates for itself with a learned odometry network.
+    New slots are streamed in when the agent enters unmapped space, and the least relevant slot is
+    streamed out when the budget is full. The memory is read by attention conditioned on each slot’s
+    distance and bearing from the agent’s current pose. The design follows how open-world games keep a bounded set of world chunks loaded. The agent is trained from scratch with our own recurrent PPO, an asymmetric privileged critic, a reward
+    aligned with the official scoring categories, and a curriculum over procedurally generated and
+    solvability-checked maps. On about 250 held-out maps across all four tiers, it reaches the exit in
+    64&thinsp;% of episodes and deliberately collects keys and opens locks in long-horizon levels. Wiping its memory at every step
+    lowers the score by 50 points (95&thinsp;% CI&nbsp;36–65). A decision takes 1.7&thinsp;ms on one CPU thread.
+  </div>
+</header>
+
+<figure class="wide">
+<svg viewBox="0 0 900 182" width="100%" xmlns="http://www.w3.org/2000/svg" font-size="10.5">
+  <defs>
+    <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#333"/></marker>
+    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8a1c1c"/></marker>
+  </defs>
+  <g fill="none" stroke="#333" stroke-width="1">
+    <!-- inputs -->
+    <rect x="4" y="14" width="112" height="30" rx="3" fill="#fff"/>
+    <rect x="4" y="54" width="112" height="30" rx="3" fill="#fff"/>
+    <rect x="4" y="94" width="112" height="30" rx="3" fill="#fff"/>
+    <!-- encoders -->
+    <rect x="140" y="14" width="124" height="30" rx="3" fill="#f4f1ec"/>
+    <rect x="140" y="54" width="124" height="30" rx="3" fill="#f4f1ec"/>
+    <rect x="140" y="94" width="124" height="30" rx="3" fill="#f4f1ec"/>
+    <!-- fusion -->
+    <rect x="290" y="44" width="80" height="50" rx="3" fill="#f4f1ec"/>
+    <!-- odometry -->
+    <rect x="140" y="140" width="124" height="34" rx="3" fill="#f4f1ec"/>
+    <rect x="290" y="140" width="80" height="34" rx="3" fill="#fff"/>
+    <!-- memory -->
+    <rect x="400" y="96" width="232" height="80" rx="4" fill="#fbf3f2" stroke="#8a1c1c" stroke-width="1.3"/>
+    <!-- core -->
+    <rect x="660" y="44" width="92" height="50" rx="3" fill="#f4f1ec"/>
+    <!-- heads -->
+    <rect x="772" y="34" width="124" height="70" rx="3" fill="#f4f1ec"/>
+    <rect x="772" y="128" width="124" height="40" rx="3" fill="#fff" stroke-dasharray="3 2"/>
+  </g>
+  <g fill="#111">
+    <text x="60" y="27" text-anchor="middle" font-weight="600">Rays</text>
+    <text x="60" y="39" text-anchor="middle" fill="#555" font-size="9">64 × (distance, hit type)</text>
+    <text x="60" y="67" text-anchor="middle" font-weight="600">Visible entities</text>
+    <text x="60" y="79" text-anchor="middle" fill="#555" font-size="9">≤ 32 × (type, 5 features)</text>
+    <text x="60" y="107" text-anchor="middle" font-weight="600">Vitals + last action</text>
+    <text x="60" y="119" text-anchor="middle" fill="#555" font-size="9">17 + 9</text>
+    <text x="202" y="27" text-anchor="middle" font-weight="600">Circular 1-D CNN</text>
+    <text x="202" y="39" text-anchor="middle" fill="#555" font-size="9">360° wrap-around padding</text>
+    <text x="202" y="67" text-anchor="middle" font-weight="600">Set self-attention</text>
+    <text x="202" y="79" text-anchor="middle" fill="#555" font-size="9">masked, mean + max pool</text>
+    <text x="202" y="107" text-anchor="middle" font-weight="600">MLP</text>
+    <text x="202" y="119" text-anchor="middle" fill="#555" font-size="9">fixed scaling</text>
+    <text x="330" y="65" text-anchor="middle" font-weight="600">Fusion</text>
+    <text x="330" y="78" text-anchor="middle" fill="#555" font-size="9">LayerNorm · 256</text>
+    <text x="202" y="154" text-anchor="middle" font-weight="600">Neural odometry</text>
+    <text x="202" y="166" text-anchor="middle" fill="#555" font-size="9">rays, velocity, last 3 actions</text>
+    <text x="330" y="154" text-anchor="middle" font-weight="600">Pose p̂ₜ</text>
+    <text x="330" y="166" text-anchor="middle" fill="#555" font-size="9">dead reckoning</text>
+    <text x="516" y="111" text-anchor="middle" font-weight="700" fill="#8a1c1c">Streamed Memory (K = 32 slots)</text>
+    <text x="706" y="65" text-anchor="middle" font-weight="600">GRU core</text>
+    <text x="706" y="78" text-anchor="middle" fill="#555" font-size="9">256</text>
+    <text x="834" y="50" text-anchor="middle" font-weight="600">Factorised heads</text>
+    <text x="834" y="64" text-anchor="middle" fill="#555" font-size="8.5">move 3 · strafe 3 · turn 3</text>
+    <text x="834" y="76" text-anchor="middle" fill="#555" font-size="8.5">attack 2 · use 2 · weapon 2</text>
+    <text x="834" y="94" text-anchor="middle" font-size="9">→ MultiBinary(9)</text>
+    <text x="834" y="144" text-anchor="middle" font-weight="600" font-size="9.5">Critic (training only)</text>
+    <text x="834" y="157" text-anchor="middle" fill="#555" font-size="8">privileged state · 2 values</text>
+  </g>
+  <!-- slots inside memory -->
+  <g>
+    <circle cx="516" cy="146" r="3.2" fill="#8a1c1c"/>
+    <text x="506" y="160" font-size="8.5" fill="#8a1c1c">p̂ₜ</text>
+    <g fill="#fff" stroke="#8a1c1c" stroke-width="1">
+      <rect x="430" y="122" width="13" height="11" rx="1.5"/><rect x="470" y="155" width="13" height="11" rx="1.5"/>
+      <rect x="560" y="124" width="13" height="11" rx="1.5"/><rect x="590" y="152" width="13" height="11" rx="1.5"/>
+      <rect x="540" y="158" width="13" height="11" rx="1.5" fill="#e9c9c5"/><rect x="415" y="150" width="13" height="11" rx="1.5" stroke-dasharray="2 1.5"/>
+    </g>
+    <g stroke="#8a1c1c" stroke-width=".7" stroke-dasharray="2 2" fill="none">
+      <line x1="516" y1="146" x2="443" y2="128"/><line x1="516" y1="146" x2="560" y2="132"/><line x1="516" y1="146" x2="590" y2="156"/>
+    </g>
+    <text x="405" y="172" font-size="7.4" fill="#555">evicted</text>
+    <text x="557" y="172" font-size="7.4" fill="#555">gated write</text>
+    
+  </g>
+  <!-- arrows -->
+  <g stroke="#333" stroke-width="1" fill="none" marker-end="url(#ar)">
+    <line x1="116" y1="29" x2="138" y2="29"/><line x1="116" y1="69" x2="138" y2="69"/><line x1="116" y1="109" x2="138" y2="109"/>
+    <path d="M264,29 C278,29 276,56 288,56"/><line x1="264" y1="69" x2="288" y2="69"/><path d="M264,109 C278,109 276,82 288,82"/>
+    <path d="M60,124 L60,157 L138,157"/>
+    <line x1="264" y1="157" x2="288" y2="157"/>
+    <line x1="370" y1="69" x2="658" y2="69"/>
+    <path d="M370,157 L398,157"/>
+    <path d="M384,69 L384,128 L398,128"/>
+    <path d="M620,96 L620,84 L658,84"/>
+    <line x1="752" y1="69" x2="770" y2="69"/>
+  </g>
+  <g stroke="#8a1c1c" stroke-width="1" fill="none" marker-end="url(#arr)">
+    <path d="M706,94 L706,140 L634,140" stroke-dasharray="3 2"/>
+  </g>
+  <text x="642" y="135" font-size="7.6" fill="#8a1c1c">query hₜ₋₁</text>
+  <text x="396" y="64" font-size="7.6" fill="#555">fused features xₜ</text>
+</svg>
+<figcaption><b>Figure 1.</b> The inference path. Each decision (every 4 game tics), three encoders embed the official
+ego-centric observation, which has no global coordinates. A learned odometry network predicts the agent’s own motion, and that motion is
+summed into a pose in the spawn frame. The Streamed Memory writes the fused features into the slot anchored nearest
+that pose, creating or evicting slots as needed. It is read by attention with the core’s previous hidden state as the query. The
+critic exists only during training. Depth and RGB are not used.</figcaption>
+</figure>
+
+<div class="cols">
+
+<h2>1&ensp;Introduction</h2>
+<p>
+Agents trained on a fixed set of levels tend to memorise button sequences and fail when a wall moves [7, 8].
+The DevForge suite, built on ViZDoom [1], tests zero-shot play on unseen maps in four tiers: combat, multi-room exploration,
+key-and-lock progression, and a full gauntlet. Under partial observability, the hard part is to
+<i>remember where things are</i>: a locked door passed three rooms ago, or a branch that was a dead end. The observation contains no global coordinates.
+A GRU must compress that history into one vector. External memories such as Neural Map [5] usually
+assume a known position. BBB (Bictor Bon Boom) instead builds its own estimate of where it is and organises memory around that estimate.
+</p>
+<p class="cont"><b>Contributions.</b></p>
+<ul class="contrib">
+  <li><b>Streamed Memory</b>, a position-anchored slot memory with a fixed budget, learned gated writes,
+  learned eviction by relevance, and reads conditioned on geometry (§2.2).</li>
+  <li><b>Neural odometry</b> that turns ego-centric rays and velocities into a spawn-frame pose, so the
+  agent anchors memory without any privileged input at test time (§2.1).</li>
+  <li>A complete <b>training pipeline written from scratch</b>: recurrent PPO with an asymmetric critic, a scorer-aligned
+  two-stream reward, and a curriculum over solvable procedural maps with replay of failed seeds (§3).</li>
+  <li>A careful <b>evaluation</b> on about 250 held-out maps, with paired bootstrap confidence intervals and
+  memory ablations (§4).</li>
+</ul>
+
+<h2>2&ensp;Method</h2>
+<p>
+<b>Observation encoding.</b> The 64 rays cover 360°, so we encode them with a 1-D CNN that uses
+<i>circular</i> padding. Up to 32 visible entities pass through masked set self-attention, which handles any
+number of enemies, followed by mean and max pooling. Vitals and the previous action go through an MLP. The three embeddings are
+concatenated, normalised and projected to \(x_t\in\mathbb{R}^{256}\). All scaling is fixed, so
+preprocessing is identical in training and in the submission.
+</p>
+
+<h3>2.1&ensp;Neural odometry.</h3>
+<p>
+The wrapper exposes neither heading nor position. A small circular CNN over the current and previous rays,
+together with the ego-frame velocity and the last three actions (because vanilla turning accelerates), predicts the motion
+\((\Delta f,\Delta r,\Delta\theta)_t\). Summing it gives the pose estimate
+</p>
+<div class="eqn"><div class="m">$$\hat\theta_{t+1}=\hat\theta_t+\Delta\theta_t,\qquad \hat p_{t+1}=\hat p_t+R(\hat\theta_t)\,[\Delta f_t,\Delta r_t]^\top .$$</div><div class="n">(1)</div></div>
+<p class="cont">
+Odometry is supervised with the true motion, taken from engine state, during a 60-update random-walk warm-up and then alongside PPO.
+At test time it sees only official observations. Heading error is about 0.1° per decision.
+</p>
+
+<h3>2.2&ensp;Streamed Memory.</h3>
+<p>
+The memory holds \(K=32\) slots \((c_j, p_j)\) with content \(c_j\in\mathbb{R}^{64}\) and an anchor
+\(p_j\) in the agent’s own spawn frame. A learned relevance \(\rho_j=\mathrm{MLP}(c_j,\text{age}_j,\text{visits}_j)\) scores each slot.
+<i>Stream in:</i> if no slot lies within \(r=320\) map units of \(\hat p_t\), a slot is allocated at \(\hat p_t\).
+When the memory is full, the new slot replaces \(\arg\min_j\rho_j\).
+<i>Write:</i> otherwise the nearest slot is updated with a learned gate,
+</p>
+<div class="eqn"><div class="m">$$c_j\leftarrow c_j+g_t\big(\mathrm{GRUCell}(w_t,c_j)-c_j\big),\quad g_t=\sigma\!\big(W_g[w_t;c_j]\big).$$</div><div class="n">(2)</div></div>
+<p class="cont">
+<i>Read:</i> each slot is seen from the current pose through
+\(\phi_j=(d_j,\log d_j,\sin\beta_j,\cos\beta_j)\) (distance and bearing). The slot is read with four-head attention,
+</p>
+<div class="eqn"><div class="m">$$\alpha_{j}=\mathrm{softmax}_j\!\Big(\tfrac{q_t^\top k_j}{\sqrt{d}}+\log\sigma(\rho_j)\Big),\;\; k_j,v_j=f([c_j;\phi_j]),$$</div><div class="n">(3)</div></div>
+<p class="cont">
+where the query \(q_t\) comes from \(x_t\) and the previous core state. The readout \(m_t=\sum_j\alpha_j v_j\) (128-d) and \(x_t\)
+feed a GRU core (256), which drives factorised categorical heads (move, strafe, turn, attack, use, weapon) that map
+to the nine buttons. Relevance biases the reads, so the policy gradient raises the relevance of useful slots, and those slots
+survive eviction. Allocation is a single distance threshold. Everything that is written, kept and read is learned.
+A fallback mode (<span class="mono">memory_mode: soft</span>) replaces the threshold with learned soft addressing.
+</p>
+
+<h2>3&ensp;Training</h2>
+<p>
+<b>Recurrent PPO</b> [2] is our own implementation, not a library. It uses sequence minibatches (truncated back-propagation through time, 32 steps),
+GAE [3] (\(\lambda=0.95\)), and separate extrinsic and intrinsic value heads (\(\gamma=0.995\) and \(0.99\)).
+Other settings: clip 0.2, a target KL of 0.03, entropy annealed from 0.01 to 0.002, and learning rate \(3\!\times\!10^{-4}\) decayed linearly to 15&thinsp;%. The
+<b>asymmetric critic</b> [4] sees privileged ground truth: pose, keys, doors, the exit and enemies. The actor
+rejects any input that is not in the official observation, so nothing privileged reaches the submission.
+</p>
+<p>
+<b>Scorer-aligned reward.</b> The extrinsic stream mirrors the four scoring categories. It rewards the exit
+(10, plus bonuses for remaining health and time), keys and unlocks (2 each), doors (0.3), first visits to true
+engine sectors (0.2, capped at 4) and kills (0.3, capped at 4). It penalises damage taken, death (−3), time and stagnation.
+The caps keep finishing a level worth more than farming kills or wandering. The intrinsic stream is an episodic
+count bonus over a 128-unit grid [6]. It ignores spinning in place and fades to zero by 70&thinsp;% of training.
+</p>
+<p>
+<b>Procedural map factory and curriculum.</b> We had no dataset, so we wrote a UDMF level generator, following the procedural-generation approach to generalisation [7]. It builds room graphs with corridors,
+doors, one to three key-and-lock chains, and either a switch exit or a walk-over exit. A solver checks every level before
+use, and an “uneven” variant varies floor heights. Freedoom levels add hand-made geometry. A <i>Director</i>
+samples the scenario families whose success rate is near 50&thinsp;% and unlocks harder levels as the agent improves. It also replays failed seeds as
+fresh “nemesis” episodes, in the spirit of prioritised level replay [9], and ends on vanilla rules at skill 3.
+Each episode is mirrored left–right at random, with ray \(i\mapsto(64-i)\bmod 64\), which doubles the variety of layouts.
+</p>
+<p>
+<b>Compute.</b> Training ran on two laptops with RTX 3050 GPUs, using CPU worker processes for the environments. The main run reached 62&thinsp;M decisions
+(about 250&thinsp;M game tics, 199&thinsp;k episodes) in 11.5&thinsp;h. A second run continued from that run’s checkpoint with a damage-dealt reward and more practice
+on switch exits (<i>aim</i>).
+</p>
+
+<h2>4&ensp;Experiments</h2>
+<p>
+<b>Protocol.</b> Every policy plays the same held-out suite through the real <span class="mono">submission/agent.py</span>:
+243 generated maps that were never used in training, with plain and uneven geometry, plus Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
+Our local scorer mirrors the official categories and weights the tiers 1:2:3:4 (the official weights are hidden).
+Intervals come from a paired bootstrap that resamples maps within each tier.
+</p>
+
+<table>
+<caption><b>Table 1.</b> Held-out results by tier: score per map (higher is better) and the share of episodes that reach the exit.
+The last row is the weighted change from the earlier 40.5&thinsp;M checkpoint, with its 95&thinsp;% CI.</caption>
+<thead>
+<tr><th></th><th colspan="2">40.5&thinsp;M</th><th colspan="2">Main, 62.0&thinsp;M</th><th colspan="2">Aim, 61.0&thinsp;M</th></tr>
+<tr><th>Tier</th><th>score</th><th>exit</th><th>score</th><th>exit</th><th>score</th><th>exit</th></tr>
+</thead>
+<tbody>
+<tr><td>1 Combat</td><td>139</td><td>88%</td><td>140</td><td>88%</td><td>140</td><td>88%</td></tr>
+<tr><td>2 Exploration</td><td>114</td><td>60%</td><td>115</td><td>58%</td><td class="best">127</td><td class="best">67%</td></tr>
+<tr><td>3 Progression</td><td>145</td><td>58%</td><td class="best">160</td><td class="best">72%</td><td>153</td><td>68%</td></tr>
+<tr><td>4 Gauntlet</td><td>97</td><td>33%</td><td>107</td><td>39%</td><td>107</td><td class="best">42%</td></tr>
+<tr><td>Weighted</td><td>118.8</td><td>57%</td><td>127.5</td><td>64%</td><td class="best">128.3</td><td>64%</td></tr>
+<tr><td>Δ vs 40.5&thinsp;M</td><td>—</td><td></td><td>+9.0</td><td class="ci">[0.5, 17.7]</td><td>+9.9</td><td class="ci">[0.6, 19.0]</td></tr>
+</tbody>
+</table>
+
+<p style="margin-top:1.6mm">
+<b>Scaling and fine-tuning.</b> Training from 40.5&thinsp;M to 62&thinsp;M decisions raises the weighted score by 9 points, and the 95&thinsp;% CI excludes zero.
+The largest gain is in tier 3: the agent reaches the exit 14 points more often after collecting keys and unlocking doors. The two later runs
+are statistically tied (Δ&nbsp;0.9, CI&nbsp;−8.5 to 10.0). The aim run is ahead on exploration and the gauntlet, and the main run is ahead on progression.
+In tier 3 the main policy collects 1.65 keys and opens 1.63 locks per map on average, which earns 85&thinsp;% of the available progression credit, and it visits 92&thinsp;% of the sectors.
+</p>
+
+<figure>
+<svg viewBox="0 0 330 142" width="84%" style="display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg" font-size="9">
+  <g stroke="#ddd" stroke-width=".6">
+    <line x1="32" y1="18" x2="326" y2="18"/><line x1="32" y1="45" x2="326" y2="45"/><line x1="32" y1="72" x2="326" y2="72"/><line x1="32" y1="99" x2="326" y2="99"/>
+  </g>
+  <line x1="32" y1="126" x2="326" y2="126" stroke="#333" stroke-width=".8"/>
+  <g fill="#555" text-anchor="end" font-size="8"><text x="28" y="129">0</text><text x="28" y="102">40</text><text x="28" y="75">80</text><text x="28" y="48">120</text><text x="28" y="21">160</text></g>
+  <!-- scale: 160 -> 108 px, so 1 unit = 0.675 px; baseline 126 -->
+  <g>
+    <!-- T1: on 145, off 141.5, forget 85.8 -->
+    <rect x="44"  y="28.1" width="20" height="97.9" fill="#8a1c1c"/><rect x="66"  y="30.5" width="20" height="95.5" fill="#c9a19b"/><rect x="88"  y="68.1" width="20" height="57.9" fill="#bbb"/>
+    <!-- T2: 128.8, 109.8, 45.3 -->
+    <rect x="118" y="39.1" width="20" height="86.9" fill="#8a1c1c"/><rect x="140" y="51.9" width="20" height="74.1" fill="#c9a19b"/><rect x="162" y="95.4" width="20" height="30.6" fill="#bbb"/>
+    <!-- T3: 163.5, 154.8, 111.8 -->
+    <rect x="192" y="15.6" width="20" height="110.4" fill="#8a1c1c"/><rect x="214" y="21.5" width="20" height="104.5" fill="#c9a19b"/><rect x="236" y="50.6" width="20" height="75.4" fill="#bbb"/>
+    <!-- T4: 73.8, 66, 43.3 -->
+    <rect x="266" y="76.2" width="20" height="49.8" fill="#8a1c1c"/><rect x="288" y="81.4" width="20" height="44.6" fill="#c9a19b"/><rect x="310" y="96.8" width="14" height="29.2" fill="#bbb"/>
+  </g>
+  <g text-anchor="middle" font-size="8.5" fill="#111">
+    <text x="76" y="138">T1 combat</text><text x="150" y="138">T2 explore</text><text x="224" y="138">T3 progression</text><text x="296" y="138">T4 gauntlet</text>
+  </g>
+  <g font-size="8.2" fill="#111">
+    <rect x="40" y="4" width="8" height="8" fill="#8a1c1c"/><text x="51" y="11">full memory</text>
+    <rect x="112" y="4" width="8" height="8" fill="#c9a19b"/><text x="123" y="11">slot readout zeroed</text>
+    <rect x="208" y="4" width="8" height="8" fill="#bbb"/><text x="219" y="11">all memory wiped each step</text>
+  </g>
+</svg>
+<figcaption><b>Figure 2.</b> Memory ablation of the main run (checkpoint at 34.8&thinsp;M decisions): score per map by tier, averaged over two decoding settings and both
+map variants (81 maps each). Wiping the recurrent state and the slots at every step costs most in exploration (−65 in tier 2).</figcaption>
+</figure>
+
+<table>
+<caption><b>Table 2.</b> Ablations, measured as the weighted-score change against the full agent (95&thinsp;% CI). Memory rows: main run at 34.8&thinsp;M decisions. Decoding rows cover all three checkpoints.</caption>
+<thead><tr><th>Variant</th><th>Δ score</th><th>95% CI</th></tr></thead>
+<tbody>
+<tr><td>Slot-memory readout set to zero</td><td>−10.1</td><td>[−20.3, −1.1]</td></tr>
+<tr><td>Recurrent state and slots wiped every step</td><td>−50.5</td><td>[−64.8, −36.4]</td></tr>
+<tr><td>Cooled sampling vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>+2.0</td><td>[−2.2, +6.4]</td></tr>
+<tr><td>Greedy vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>−0.4</td><td>[−5.2, +4.5]</td></tr>
+</tbody>
+</table>
+
+<p style="margin-top:1.6mm">
+<b>Does the memory help?</b> Both kinds of memory matter. Removing all state makes the agent forget where it has been, and its exit rate falls from about 70&thinsp;% to 12–28&thinsp;%.
+Zeroing only the slot readout, while keeping the GRU, still costs about 10 points, and the CI excludes zero. The loss is largest in
+exploration and progression and almost absent in pure combat, which is the pattern expected if the slots store
+<i>places</i>. The decoding method matters little, and we submit sampling at <i>T</i>&thinsp;=&thinsp;0.5, which avoids the loops that greedy decoding can fall into.
+</p>
+
+<p>
+<b>Deployment.</b> All of BBB’s actions come from the network. The code around it only checks input and output
+shapes and presses nothing for one decision if an exception occurs. The weights are 5.1&thinsp;MB. A decision takes 1.7&thinsp;ms on average on one CPU thread, against a budget of 40&thinsp;ms, so we use the CPU even when a GPU is offered.
+</p>
+
+<h2>5&ensp;Limitations and future work</h2>
+<p>
+BBB’s odometry drifts over long episodes, so anchors are approximate. Door and key colours cannot be
+observed, so the memory stores “a locked door” rather than “the red door”. In a 240-map stress test, exit rates for walk-over exits
+are 61–100&thinsp;% but only 31–52&thinsp;% for switch exits: pressing USE against the right wall is the main failure. Tier 4
+remains hard, with deaths in 45&thinsp;% of episodes, and the agent kills only 15&thinsp;% of enemies. Next steps: a hierarchical manager–worker policy and odometry loop closure.
+</p>
+
+<h2>References</h2>
+<ol class="refs">
+  <li>M. Kempka <i>et al.</i> ViZDoom: A Doom-based AI research platform for visual RL. <i>IEEE CIG</i>, 2016.</li>
+  <li>J. Schulman <i>et al.</i> Proximal policy optimization algorithms. <i>arXiv:1707.06347</i>, 2017.</li>
+  <li>J. Schulman <i>et al.</i> High-dimensional continuous control using generalized advantage estimation. <i>ICLR</i>, 2016.</li>
+  <li>L. Pinto <i>et al.</i> Asymmetric actor critic for image-based robot learning. <i>RSS</i>, 2018.</li>
+  <li>E. Parisotto, R. Salakhutdinov. Neural Map: Structured memory for deep RL. <i>ICLR</i>, 2018.</li>
+  <li>A. P. Badia <i>et al.</i> Never give up: Learning directed exploration strategies. <i>ICLR</i>, 2020.</li>
+  <li>K. Cobbe <i>et al.</i> Leveraging procedural generation to benchmark RL. <i>ICML</i>, 2020.</li>
+  <li>G. Lample, D. S. Chaplot. Playing FPS games with deep reinforcement learning. <i>AAAI</i>, 2017.</li>
+  <li>M. Jiang, E. Grefenstette, T. Rocktäschel. Prioritized level replay. <i>ICML</i>, 2021.</li>
+</ol>
+
+</div>
+</div>
+</body>
+</html>

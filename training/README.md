@@ -15,3 +15,19 @@ Training-only code. Nothing here is imported by `submission/`.
 | `export.py` | checkpoint to submission weights (actor only) |
 
 Setup and running on the GPU laptops: [docs/TRAINING.md](../docs/TRAINING.md).
+
+## Configs
+
+Each file in `configs/` is one experiment. Everything not set in the file uses the defaults in `config.py`.
+Results are in [docs/EXPERIMENTS.md](../docs/EXPERIMENTS.md).
+
+| Config | Run name | What it tests | Status |
+|---|---|---|---|
+| `full.yaml` | `full` | Streamed Memory (K = 32) with the full curriculum: **the main run, and the source of the submitted weights** | 62M decisions in 11.5 h (Acer laptop) |
+| `asus_aim.yaml` | `aim_s5` | continues from a `full` checkpoint (49.8M) with a damage-dealt reward, switch exits in 85% of practice maps, a small reward for trying USE on walls, and uneven maps | 61M decisions; tied with `full` |
+| `asus_variety.yaml` | `variety_s4` | continues from `full` with 60% uneven practice maps and more Freedoom | scored 8.8 points below `full`; stopped |
+| `asus_fight.yaml` | `fight_s3` | combat maps pay more per kill and less for leaving with no kills | more kills but fewer exits than `full`; stopped |
+| `asus_combat.yaml` | `full_s2` | more combat and gauntlet practice, more reward per kill, less for rushing to the exit | early experiment; replaced by `fight_s3` |
+| `gru_baseline.yaml` | `gru_baseline` | the same curriculum without spatial memory | not run (no time); the memory ablations in the brief take its place |
+| `memory_k64.yaml` | `memory_k64` | 64 slots instead of 32 | not run |
+| `smoke.yaml` | `smoke` | the whole pipeline runs end to end within an hour | used for checks before every long run |

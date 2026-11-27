@@ -1,4 +1,4 @@
-"""Shared builders for the Streamed Mind tests."""
+"""Shared builders for the BBB tests."""
 
 import numpy as np
 import torch

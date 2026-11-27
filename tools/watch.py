@@ -106,7 +106,7 @@ def main(argv=None) -> int:
         ap.error("--speed must be positive")
 
     env = None
-    with tempfile.TemporaryDirectory(prefix="streamed-mind-watch-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="bbb-watch-") as tmp:
         suite = build_suite(tmp, variety=1.0 if args.variety else 0.0)
         if args.tier:
             suite = [e for e in suite if e["tier"] == args.tier]

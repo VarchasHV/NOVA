@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from evaluation.run_heldout import evaluate
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 from models.config import ModelConfig
 from models.odometry import integrate_pose
 from training.config import PPOConfig, load_config
@@ -23,7 +23,7 @@ from training.vec_env import EnvConfig, VecEnv
 def pipeline():
     torch.manual_seed(0)
     cfg = ModelConfig()
-    actor, critic = StreamedMindActor(cfg), PrivilegedCritic(cfg.core_size)
+    actor, critic = BBBActor(cfg), PrivilegedCritic(cfg.core_size)
     director = Director(DirectorConfig(fixed_level=0))
     env = VecEnv(EnvConfig(variants_per_bucket=1, mirror_prob=0.5), num_workers=0, envs_per_worker=3, seed=3)
     env.reset(director.directive(1.0))

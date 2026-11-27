@@ -6,7 +6,7 @@ from doom_env import make_env
 from helpers import random_obs
 from models import obs as O
 from models import policy as P
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 from models.config import ModelConfig
 from models.encoders import EntityEncoder, ObservationEncoder
 
@@ -61,7 +61,7 @@ def test_action_heads():
 
 
 def test_actor_rejects_privileged_input():
-    actor = StreamedMindActor(ModelConfig())
+    actor = BBBActor(ModelConfig())
     obs = random_obs(1)
     obs["priv"] = torch.zeros(1, 3)
     with pytest.raises(ValueError, match="must not receive"):

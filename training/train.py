@@ -1,4 +1,4 @@
-"""Train Streamed Mind.
+"""Train BBB (Bictor Bon Boom).
 
     python -m training.train --config configs/full.yaml          # run again to resume
     python -m training.train --config configs/full.yaml --set ppo.lr=2e-4 --run-name try2
@@ -46,7 +46,7 @@ def main(argv=None) -> int:
     import torch
     from torch.utils.tensorboard import SummaryWriter
 
-    from models.actor import StreamedMindActor
+    from models.actor import BBBActor
 
     from .config import load_config, to_dict
     from .critic import PrivilegedCritic
@@ -79,7 +79,7 @@ def main(argv=None) -> int:
             raise SystemExit(f"{latest} was trained with different model settings.\n saved:  {saved}\n config: {wanted}\n"
                              "Use --run-name for a new run, or --fresh to overwrite.")
 
-    actor = StreamedMindActor(cfg.model).to(device)
+    actor = BBBActor(cfg.model).to(device)
     critic = PrivilegedCritic(cfg.model.core_size, cfg.ppo.critic_detach).to(device)
     learner = PPOLearner(actor, critic, cfg.ppo)
     director = Director(cfg.director, cfg.seed)

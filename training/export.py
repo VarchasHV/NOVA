@@ -12,7 +12,7 @@ from pathlib import Path
 
 import torch
 
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 from models.config import ModelConfig
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +21,7 @@ DEFAULT_OUT = ROOT / "submission" / "weights" / "model.pt"
 
 def export(ckpt: str | Path, out: str | Path, mode: str = "sample", temperature: float = 1.0, fp16: bool = False) -> Path:
     data = torch.load(ckpt, map_location="cpu", weights_only=False)  # a checkpoint we wrote ourselves
-    model = StreamedMindActor(ModelConfig.from_dict(data["model_config"]))
+    model = BBBActor(ModelConfig.from_dict(data["model_config"]))
     model.load_state_dict(data["actor"])
     state = {k: (v.half() if fp16 and v.is_floating_point() else v).cpu() for k, v in model.state_dict().items()}
     if any(not torch.isfinite(v).all() for v in state.values() if v.is_floating_point()):

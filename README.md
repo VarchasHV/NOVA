@@ -1,8 +1,53 @@
-# Streamed Mind
+# BBB (Bictor Bon Boom)
 
-Our entry for **Yugaantar 2026 · DevForge — Track 1: "Can It Play DOOM?"**: a recurrent PPO agent with
-a budgeted, position-anchored spatial memory. Design: [docs/BRIEF.md](docs/BRIEF.md). Facts about the
-environment: [docs/FINDINGS.md](docs/FINDINGS.md).
+**Budgeted, position-anchored spatial memory for zero-shot DOOM play.**
+Our entry for *Yugaantar 2026 · DevForge, Track 1: "Can It Play DOOM?"*
+
+📄 **[2-page project brief (PDF)](docs/brief.pdf)** · [design notes](docs/BRIEF.md) · [environment findings](docs/FINDINGS.md) · [experiment log](docs/EXPERIMENTS.md)
+
+BBB (Bictor Bon Boom) is a 1.07M-parameter recurrent agent. It plays DOOM levels it has never seen, using only the official
+ego-centric telemetry: rays, visible entities and vitals. It gets no pixels and no global coordinates. Open-world games keep a fixed budget of
+world chunks loaded, streaming chunks in and out as the player moves. Our agent manages its memory the same way. It has **32 memory slots**, each
+**anchored to a pose that the agent estimates for itself** with a learned odometry network. When the agent reaches unmapped space, a new slot
+is created; when all 32 are in use, the **least relevant slot (by a learned score) is overwritten**. Slots are read by
+attention from the agent's current point of view. This lets the agent remember "a locked door behind me and to the left,
+three rooms ago" without being given a map.
+
+![Architecture](docs/brief/architecture.png)
+
+## Highlights
+
+- **Our own recurrent PPO** (no RL library) with an **asymmetric privileged critic**, separate extrinsic and intrinsic
+  value heads, and a reward built to match the official scoring categories.
+- **Our own procedural map factory**: room graphs, doors, one to three key-and-lock chains, switch or walk-over exits,
+  uneven floors. A solver checks every level, and Freedoom maps add variety.
+- **Curriculum Director**: trains most on scenarios the agent solves about half the time, replays seeds it failed ("nemesis"
+  episodes) and mirrors episodes left to right at random.
+- **Fast enough to spare**: 1.7 ms per decision on one CPU thread (the budget is 40 ms), with 5.1 MB of weights.
+- **Every action comes from the network.** The code around it only checks inputs and outputs. It contains no rules, pathfinding or aim code.
+
+## Results
+
+Evaluation used 243 generated maps that were never used in training, plus Freedoom maps, across all four tiers (249 episodes, fixed seeds). Each policy ran through the real
+`submission/agent.py` and was scored by our local copy of the scorer (tiers weighted 1:2:3:4). The organisers' exact weights are not public, so the
+absolute numbers are estimates.
+
+| Tier | 40.5M decisions | Main run, 62.0M | Aim run, 61.0M |
+|---|---|---|---|
+| 1 Combat | 139 · exit 88% | 140 · exit 88% | 140 · exit 88% |
+| 2 Exploration | 114 · exit 60% | 115 · exit 58% | **127 · exit 67%** |
+| 3 Progression | 145 · exit 58% | **160 · exit 72%** | 153 · exit 68% |
+| 4 Gauntlet | 97 · exit 33% | 107 · exit 39% | 107 · exit 42% |
+| **Weighted** | 118.8 | 127.5 (+9.0, 95% CI 0.5 to 17.7) | **128.3** (+9.9, 95% CI 0.6 to 19.0) |
+
+**Does the memory help?** Yes. Wiping all memory at every step costs **50 points** (95% CI 36 to 65). Zeroing only
+the slot readout costs **10 points** (95% CI 1 to 20), mostly in exploration and progression, which is where remembering
+places should matter.
+
+![Memory ablation](docs/brief/memory_ablation.png)
+
+**Known weaknesses:** switch exits (31–52% exit rate, compared with 61–100% for walk-over exits), deaths in tier 4 (about 45% of episodes),
+and a low kill rate (about 15% of enemies).
 
 ## Train, evaluate, submit
 
@@ -23,103 +68,27 @@ uv run python validate.py
 Add `--set key=value` to override any setting, for example `--set max_hours=12 --set num_workers=10`.
 Driving the GPU laptops from the Mac: [docs/TRAINING.md](docs/TRAINING.md).
 
-| Folder | Contents |
-|---|---|
-| `submission/models/` | actor only: encoders, odometry, streamed memory, core, action heads (`models/` points here) |
-| `submission/` | `DoomAgent` with its safety shell, and exported weights (Git LFS) |
-| `training/` | PPO, rewards, map generator, curriculum ([details](training/README.md)) |
-| `evaluation/` | held-out suite, local scorer, latency profile |
-| `configs/` | one YAML file per experiment |
-
-The rest of this file is the original template guide.
-
----
-
-# devforge-doom-template
-
-Starter template for **Yugaantar 2026 · DevForge — Track 1: "Can It Play DOOM?"**
-
-> For decades, *"Can it run DOOM?"* was the ultimate hardware test. Now: **can your neural network
-> actually play DOOM?** Train an agent that plays unseen levels **zero-shot**: survive ambushes,
-> navigate multi-room layouts, find keycards, unlock doors and reach the exit.
-
-No dataset is provided. Your agent learns by interacting with the engine.
-
-## Quickstart
-
-1. Click **"Use this template"** on GitHub to create your team's (public) repository.
-2. Set up the environment (Python 3.13, [uv](https://docs.astral.sh/uv/)):
-
-   ```bash
-   uv sync                 # installs vizdoom, gymnasium and the official wrapper (env/) in editable mode
-   uv run python validate.py
-   ```
-
-   Or use the official image, which is exactly what the scorer runs:
-
-   ```bash
-   docker build -t devforge-doom .            # or: docker pull <official image tag, announced>
-   python validate.py --docker --image devforge-doom   # installs requirements.txt, then runs sandboxed like the scorer
-   ```
-
-3. Replace the random baseline in `submission/agent.py` with your trained agent.
-4. Put weights in `submission/weights/` (Git LFS) and training code in `training/`.
-5. Run `python validate.py --docker` and submit your repo URL.
-
-**Platforms:** Linux (x86-64/ARM), macOS on Apple Silicon (macOS 15+) and Windows (x86-64) all
-work with `uv sync` and `validate.py`. Intel Macs have no `vizdoom` 1.3.3 wheel: use Docker or a
-Linux machine. Evaluation runs on Linux, so `validate.py --docker` is the closest check.
-
 ## Repository layout
 
-```
-env/                  official ViZDoom Gymnasium wrapper (doom_env): spaces, sensors, protocol, limits
-maps/                 one small test map (NOT an evaluation map); bring your own for training
-submission/agent.py   your DoomAgent: the evaluation entry point
-submission/weights/   model weights (Git LFS)
-training/             your training pipeline
-validate.py           run before submitting
-tests/                tests for the wrapper and validator (uv run pytest)
-docs/                 contract, rules, submission guide, evaluation details
-```
+| Folder | Contents |
+|---|---|
+| `submission/` | `DoomAgent` (the evaluation entry point) with its safety checks, and the exported weights (Git LFS) |
+| `submission/models/` | the actor only: encoders, odometry, Streamed Memory, GRU core, action heads |
+| `training/` | PPO, rewards, map generator, curriculum ([details](training/README.md)) |
+| `evaluation/` | held-out suite, local scorer, latency profile |
+| `configs/` | one YAML file per experiment ([which is which](training/README.md#configs)) |
+| `tools/` | live training dashboard, demo pages, top-down episode viewer, remote-training helpers |
+| `docs/` | brief, design notes, environment findings, experiment log, and the official contract and rules |
+| `env/`, `validate.py`, `maps/` | official template files, unchanged |
 
-## Using the environment
-
-```python
-from doom_env import make_env
-
-env = make_env("maps/two_rooms.wad")     # test map; use your own maps for training
-obs, info = env.reset(seed=0)
-obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-```
-
-Observations are a dict of `rgb`, `depth`, `vitals`, `rays` and `visible_entities`, all
-ego-centric and partially observable. See [docs/CONTRACT.md](docs/CONTRACT.md).
-The wrapper's `reward` is a basic default for convenience. Shape your own reward for training.
-
-**Compute tip:** training only on raw pixels is expensive. The `rays`, `visible_entities` and
-`vitals` signals run thousands of steps per second on a CPU. Hybrid pixel + spatial models are welcome.
-
-## Hardware at evaluation
-
-One NVIDIA **RTX 3090 (24 GB)** shared between evaluation workers. Each agent gets **2 GB VRAM,
-8 GB RAM and 1 CPU thread**, so keep models compact and inference fast
-(see [hardware](docs/EVALUATION.md#hardware) and [timeouts](docs/EVALUATION.md#timeouts)).
-`validate.py` runs your agent under the same CPU/RAM limits and reports GPU memory.
-
-## Documentation
+## Official documents
 
 | Doc | What's inside |
 | --- | --- |
-| [docs/CONTRACT.md](docs/CONTRACT.md) | Observation/action spaces and the `DoomAgent` interface |
-| [docs/RULES.md](docs/RULES.md) | Ground rules: what's allowed, what gets you disqualified |
-| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Submission checklist, Git LFS, 1 GB limit, `requirements.txt` |
-| [docs/EVALUATION.md](docs/EVALUATION.md) | Map tiers, scoring categories, timeouts, replays |
+| [docs/CONTRACT.md](docs/CONTRACT.md) | Observation and action spaces and the `DoomAgent` interface |
+| [docs/RULES.md](docs/RULES.md) | Ground rules |
+| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Submission checklist, Git LFS, size limit |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Map tiers, scoring categories, timeouts |
 
-## Rules in one minute
-
-- Actions must come from **trained neural parameters**: no rule trees, no `A*`/Dijkstra, no `atan2` aimbots,
-  no unmodified off-the-shelf SB3.
-- Change anything you want **during training**. Evaluation uses the **vanilla engine**, the
-  official wrapper and **unseen maps**.
-- Create the repo during the hackathon. Libraries are fine; the core architecture and training must be yours.
+This repository was created from the official
+[devforge-doom-template](https://github.com/Reinforce-SST/devforge-doom-template) during the hackathon.

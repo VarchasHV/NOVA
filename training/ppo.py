@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from models import policy as P
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 
 from .aux import aux_loss, odometry_loss
 from .config import PPOConfig
@@ -14,7 +14,7 @@ from .rollout import odometry_pairs, sequence_minibatches
 
 
 class PPOLearner:
-    def __init__(self, actor: StreamedMindActor, critic: nn.Module, cfg: PPOConfig):
+    def __init__(self, actor: BBBActor, critic: nn.Module, cfg: PPOConfig):
         self.actor, self.critic, self.cfg = actor, critic, cfg
         odom_ids = {id(p) for p in actor.odometry.parameters()}
         self.params = [p for p in actor.parameters() if id(p) not in odom_ids] + list(critic.parameters())

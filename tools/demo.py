@@ -33,7 +33,7 @@ from evaluation.run_heldout import load_agent  # noqa: E402
 from evaluation.suite import build_suite  # noqa: E402
 from models import obs as O  # noqa: E402
 from models import policy as P  # noqa: E402
-from models.actor import StreamedMindActor  # noqa: E402
+from models.actor import BBBActor  # noqa: E402
 from models.config import ModelConfig  # noqa: E402
 from training.env import TrainEnv  # noqa: E402
 from training.export import export  # noqa: E402
@@ -62,7 +62,7 @@ def loadable(path: Path) -> bool:
     """False for checkpoints from an older version of the network."""
     try:
         data = torch.load(path, map_location="cpu", weights_only=False)
-        StreamedMindActor(ModelConfig.from_dict(data["model_config"])).load_state_dict(data["actor"])
+        BBBActor(ModelConfig.from_dict(data["model_config"])).load_state_dict(data["actor"])
         return True
     except (RuntimeError, KeyError, ValueError):
         return False
@@ -474,8 +474,8 @@ def write_index(out: Path, notes: dict) -> None:
     style = (TEMPLATES / "style.css").read_text()
     (out / "index.html").write_text(
         f'<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Streamed Mind demo</title><style>{style} img{{max-width:100%;background:#fff;border-radius:10px}}</style>"
-        f"<main><h1>Streamed Mind: demo</h1><ul>{links}</ul><div class='card'><b>Checkpoints used</b><ul>{used}</ul></div>{image}</main>")
+        f"<title>BBB demo</title><style>{style} img{{max-width:100%;background:#fff;border-radius:10px}}</style>"
+        f"<main><h1>BBB: demo</h1><ul>{links}</ul><div class='card'><b>Checkpoints used</b><ul>{used}</ul></div>{image}</main>")
 
 
 def main(argv=None) -> int:
@@ -506,7 +506,7 @@ def main(argv=None) -> int:
         given = {k: getattr(args, k) for k in ("early", "mid", "late")}
         found = {} if all(given.values()) or (args.what in ("replay", "killcam") and given["late"]) else discover(ROOT / "runs")
         paths = {k: Path(v) if v else found.get(k) for k, v in given.items()}
-        tmp = Path(tempfile.mkdtemp(prefix="streamed-mind-demo-"))
+        tmp = Path(tempfile.mkdtemp(prefix="bbb-demo-"))
         try:
             suite = build_suite(str(tmp), maps_per_tier=6, freedoom=False)
             late = Checkpoint(paths["late"], tmp, args.mode)

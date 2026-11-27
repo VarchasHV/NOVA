@@ -1,9 +1,9 @@
-# Streamed Mind: a budgeted, position-anchored spatial memory for DOOM
+# BBB (Bictor Bon Boom): a budgeted, position-anchored spatial memory for DOOM
 
 ## The idea
 
 Open-world games (GTA: San Andreas, Metroid Prime, Jak & Daxter) keep a fixed budget of world chunks
-in memory, streaming new ones in by priority and evicting irrelevant ones. Streamed Mind gives a
+in memory, streaming new ones in by priority and evicting irrelevant ones. BBB gives a
 neural agent the same discipline: a fixed number of memory slots, each anchored to a position the
 agent estimates for itself, holding learned content, evicted by learned relevance and read by
 attention from the agent's current point of view. It lets the agent recall that a locked door was

@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from helpers import random_obs
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 from models.config import ModelConfig
 from models.odometry import integrate_pose
 from models.streamed_memory import StreamedMemory, egocentric
@@ -88,7 +88,7 @@ def test_integrate_pose_turn_and_move():
 def test_unroll_reproduces_step_by_step(kw):
     """PPO replays sequences with unroll(); it must match what happened while acting."""
     torch.manual_seed(0)
-    actor = StreamedMindActor(ModelConfig(**kw)).eval()
+    actor = BBBActor(ModelConfig(**kw)).eval()
     T, B = 12, 3
     seq = [random_obs(B) for _ in range(T)]
     reset = torch.zeros(T, B)

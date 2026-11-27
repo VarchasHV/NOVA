@@ -1,4 +1,4 @@
-"""Streamed Mind: evaluation entry point. The scorer instantiates DoomAgent from this file.
+"""BBB (Bictor Bon Boom): evaluation entry point. The scorer instantiates DoomAgent from this file.
 
 Contract: docs/CONTRACT.md §6. Every action comes from the trained network in `submission/models/`. The code
 around it is a safety shell: it cleans inputs and validates outputs. If something raises, no button
@@ -23,7 +23,7 @@ import torch  # noqa: E402
 
 from models import obs as O  # noqa: E402
 from models import policy as P  # noqa: E402
-from models.actor import StreamedMindActor  # noqa: E402
+from models.actor import BBBActor  # noqa: E402
 from models.config import ModelConfig  # noqa: E402
 
 SEED = 0
@@ -49,11 +49,11 @@ class DoomAgent:
             traceback.print_exc()
         self.reset()
 
-    def _load(self) -> StreamedMindActor:
+    def _load(self) -> BBBActor:
         try:
             if WEIGHTS_PATH.is_file():
                 data = torch.load(WEIGHTS_PATH, map_location="cpu", weights_only=True)
-                model = StreamedMindActor(ModelConfig.from_dict(data["model_config"]))
+                model = BBBActor(ModelConfig.from_dict(data["model_config"]))
                 model.load_state_dict({k: v.float() if v.is_floating_point() else v for k, v in data["actor"].items()})
                 self.mode = data.get("inference", {}).get("mode", self.mode)
                 self.temperature = float(data.get("inference", {}).get("temperature", self.temperature))
@@ -64,7 +64,7 @@ class DoomAgent:
             traceback.print_exc()
             print(f"WARNING: could not load {WEIGHTS_PATH} (Git LFS pointer?); using an UNTRAINED network", flush=True)
         torch.manual_seed(SEED)
-        return StreamedMindActor(ModelConfig()).to(self.device).eval()
+        return BBBActor(ModelConfig()).to(self.device).eval()
 
     def _blank_observation(self) -> dict:
         return {

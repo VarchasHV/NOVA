@@ -50,7 +50,7 @@ def main() -> int:
     lfs = shutil.which("git-lfs") or subprocess.run(["git", "lfs", "version"], capture_output=True).returncode == 0
     print("git lfs: OK" if lfs else "git lfs: MISSING (needed to commit the weights)")
 
-    from models.actor import StreamedMindActor
+    from models.actor import BBBActor
     from training.config import load_config
     from training.critic import PrivilegedCritic
     from training.director import Director
@@ -64,7 +64,7 @@ def main() -> int:
     workers_options = sorted({max(1, cpus // 2), max(1, cpus - 2)})
     candidates = [(w, e) for w in workers_options for e in (8, 16)]
     best = None
-    actor = StreamedMindActor(cfg.model).to(device)
+    actor = BBBActor(cfg.model).to(device)
     critic = PrivilegedCritic(cfg.model.core_size).to(device)
     learner = PPOLearner(actor, critic, cfg.ppo)
     director = Director(cfg.director)

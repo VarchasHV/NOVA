@@ -85,7 +85,7 @@ def evaluate(weights, device: str = "cpu", maps_per_tier: int = 6, episodes: int
         agent.mode = mode
     if temperature is not None:
         agent.temperature = temperature
-    tmp = tempfile.mkdtemp(prefix="streamed-mind-eval-")
+    tmp = tempfile.mkdtemp(prefix="bbb-eval-")
     try:
         suite = build_suite(tmp, maps_per_tier, freedoom, variety)
         env = TrainEnv(suite[0]["wad"], suite[0]["map"], render_buffers=agent.model.cfg.use_depth)

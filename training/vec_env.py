@@ -214,7 +214,7 @@ class WorkerCore:
     """The environments of one worker. Also used directly (no processes) when num_workers is 0."""
 
     def __init__(self, cfg: EnvConfig, num_envs: int, seed: int):
-        self.dir = tempfile.mkdtemp(prefix="streamed-mind-")
+        self.dir = tempfile.mkdtemp(prefix="bbb-")
         rng = random.Random(seed)
         self.pool = ScenarioPool(cfg, rng, self.dir)
         self.slots = [EnvSlot(cfg, self.pool, random.Random(rng.randrange(2**62)), j < cfg.freedoom_slots)

@@ -1,7 +1,7 @@
 [project]
 name = "devforge-doom-template"
 version = "0.1.0"
-description = "Streamed Mind: DevForge 'Can It Play DOOM?' (Yugaantar 2026)"
+description = "BBB (Bictor Bon Boom): DevForge 'Can It Play DOOM?' (Yugaantar 2026)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

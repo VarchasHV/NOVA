@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from models import policy as P
-from models.actor import StreamedMindActor
+from models.actor import BBBActor
 
 from .vec_env import VecEnv
 
@@ -47,7 +47,7 @@ class ReturnScaler:
 
 
 class Collector:
-    def __init__(self, env: VecEnv, actor: StreamedMindActor, critic, length: int, seq_len: int, device: str):
+    def __init__(self, env: VecEnv, actor: BBBActor, critic, length: int, seq_len: int, device: str):
         if length % seq_len:
             raise ValueError(f"rollout length {length} must be a multiple of seq_len {seq_len}")
         self.env, self.actor, self.critic = env, actor, critic
