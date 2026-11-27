@@ -10,8 +10,8 @@ ego-centric telemetry: rays, visible entities and vitals. It gets no pixels and 
 world chunks loaded, streaming chunks in and out as the player moves. Our agent manages its memory the same way. It has **32 memory slots**, each
 **anchored to a pose that the agent estimates for itself** with a learned odometry network. When the agent reaches unmapped space, a new slot
 is created; when all 32 are in use, the **least relevant slot (by a learned score) is overwritten**. Slots are read by
-attention from the agent's current point of view. This lets the agent remember "a locked door behind me and to the left,
-three rooms ago" without being given a map.
+attention from the agent's current point of view. The design is meant to let the agent remember things like "a locked door behind me and to the
+left, three rooms ago" without being given a map.
 
 ![Architecture](docs/brief/architecture.png)
 
@@ -135,56 +135,37 @@ python3 tools/dashboard.py --hosts acer           # live page at http://localhos
 uv run python tools/watch.py acer --best          # watch that laptop's best checkpoint play
 ```
 
-## Using different models
+## The model
 
-The agent always loads `submission/weights/model.pt`. Earlier versions of that file are kept in git history.
+The repository holds one model, [`submission/weights/model.pt`](submission/weights/model.pt) (4.3 MB, Git LFS): the best
+checkpoint of the `full` training run, at 58.4M decisions. It samples its actions at temperature 0.5. Its SHA-256
+starts with `a5b6f43e`.
 
-| Commit | Model | Decisions | File hash starts |
-|---|---|---|---|
-| `c6dbfd5` | best checkpoint (**submitted**) | 58.4M | `a5b6f43e` |
-| `9e9a299` | earlier checkpoint | 40.5M | `824eefb4` |
-| `f00a8f1` | earlier checkpoint | 24.9M | `80b3fc46` |
-
-All three come from the same training run and sample their actions at temperature 0.5.
-
-### Get an earlier model
-
-This needs the full history (not a `--depth 1` clone).
+### Test it
 
 ```bash
-mkdir -p runs/models                                                                      # a folder git ignores
-git cat-file --filters f00a8f1:submission/weights/model.pt > runs/models/main_24M.pt      # the 24.9M model
-git cat-file --filters 9e9a299:submission/weights/model.pt > runs/models/main_40M.pt      # the 40.5M model
-shasum -a 256 runs/models/*.pt                                                            # compare with the table
+shasum -a 256 submission/weights/model.pt                                      # should start a5b6f43e
+uv run python validate.py                                                      # official checks
+uv run python validate.py --map path/to/map.wad:MAP01                          # try it on your own map
+uv run python -m evaluation.run_heldout                                        # score on 27 held-out games
+uv run python -m evaluation.run_heldout --maps-per-tier 12 --episodes 3        # more games, steadier score
+uv run python -m evaluation.run_heldout --variety 1                            # maps with steps and ledges
+uv run python -m evaluation.profile_latency                                    # decision speed on one CPU thread
+uv run python tools/viz_topdown.py --tier 3 --out episode.png                  # top-down picture of one game
+uv run python tools/watch.py --ckpt submission/weights/model.pt                # watch it play (this window uses temperature 1.0)
 ```
 
-### Test a model without installing it
+A 27-game score can swing by about 20 points, so small differences mean little.
+
+### Replace it with a model you trained
 
 ```bash
-uv run python -m evaluation.run_heldout                                                   # the installed model, 27 games
-uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt                  # another model file
-uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --maps-per-tier 12 --episodes 3   # more games, steadier score
-uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --variety 1      # maps with steps and ledges
-uv run python -m evaluation.run_heldout --ckpt runs/full/best.pt --temperature 0.5        # a training checkpoint
-uv run python tools/viz_topdown.py --weights runs/models/main_40M.pt --tier 3 --out episode.png   # top-down picture of one game
-uv run python tools/watch.py --ckpt runs/models/main_40M.pt                                # watch it play (uses temperature 1.0)
+uv run python -m training.export --ckpt runs/full/best.pt --temperature 0.5    # write submission/weights/model.pt (default temperature is 1.0)
+uv run python validate.py                                                      # check it before committing
+git checkout -- submission/weights/model.pt                                    # undo: go back to the committed model
 ```
 
-Compare models on the same options only. A 27-game score can swing by about 20 points, so small gaps mean little.
-
-### Install a model
-
-```bash
-cp runs/models/main_40M.pt submission/weights/model.pt                       # use a downloaded model
-uv run python -m training.export --ckpt runs/full/best.pt --temperature 0.5 # or export a checkpoint (the default temperature is 1.0)
-uv run python validate.py                                                   # official checks
-uv run python validate.py --map path/to/map.wad:MAP01                       # try it on your own map
-uv run python -m evaluation.profile_latency                                 # decision speed on one CPU thread
-git checkout -- submission/weights/model.pt                                 # undo: go back to the committed model
-```
-
-To publish it, commit `submission/weights/model.pt` (Git LFS handles the file) and push. The scorer reads the
-last commit on the `main` branch.
+The scorer reads the last commit on the `main` branch.
 
 ## Other tools
 

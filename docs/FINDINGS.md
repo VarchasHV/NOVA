@@ -71,16 +71,15 @@ uv run pytest --ignore=tests/test_remote.py \
   --deselect tests/test_validate.py::test_cpu_and_ram_limits_are_emulated
 ```
 
-## Open questions for the organizers (ask early)
+## Fixed bookkeeping in the memory (declared for reviewers)
 
-1. **Memory bookkeeping.** We estimate our own pose from observations with a neural network, write a
-   learned memory vector into a slot anchored at that estimate (new slot when no slot is within 320
-   units), and feed each slot's relative position to the network. All actions, what is written, how
-   strongly, what is kept and what is read are learned. Is this allowed under "decisions must come from
-   trained parameters"? If not, set `model.memory_mode: soft` (slot choice becomes learned attention).
-2. The pose estimate adds up the network's per-step motion predictions with fixed trigonometry
-   (dead reckoning). Is that acceptable bookkeeping?
-3. The official base image tag, and whether the draft timeouts and contract version are final.
+All actions come from the network, and what is written to memory, how strongly, what is kept and what is read
+are learned. Two steps are fixed code:
+
+1. **Slot choice.** The pose is estimated from observations by a neural network. A new slot is created when no slot
+   is within 320 units of it; otherwise the nearest slot is written. With `model.memory_mode: soft` the slot choice
+   is learned attention instead (not used by the submitted model).
+2. **Dead reckoning.** The pose is the sum of the network's per-step motion predictions, using fixed trigonometry.
 
 ## Changes from the original plan
 
