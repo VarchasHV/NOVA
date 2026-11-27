@@ -28,21 +28,21 @@ three rooms ago" without being given a map.
 
 ## Results
 
-Evaluation used 240 generated maps that were never used in training, plus 3 Freedoom maps, across all four tiers (249 episodes, fixed seeds). Each policy ran through the real
+Each of two evaluation sets has 240 generated maps that were never used in training, plus 3 Freedoom maps, across all four tiers (249 episodes, fixed seeds). Each policy ran through the real
 `submission/agent.py` and was scored by our local copy of the scorer (tiers weighted 1:2:3:4). The organisers' exact weights are not public, so the
 absolute numbers are estimates.
 
-| Tier | 40.5M decisions | Main run, 62.0M | Aim run, 61.0M |
-|---|---|---|---|
-| 1 Combat | 139 · exit 88% | 140 · exit 88% | 140 · exit 88% |
-| 2 Exploration | 114 · exit 60% | 115 · exit 58% | **127 · exit 67%** |
-| 3 Progression | 145 · exit 58% | **160 · exit 72%** | 153 · exit 68% |
-| 4 Gauntlet | 97 · exit 33% | 107 · exit 39% | 107 · exit 42% |
-| **Weighted** | 118.8 | 127.5 (+8.6, 95% CI 0.5 to 17.1) | **128.3** (+9.5, 95% CI 1.0 to 18.1) |
+| Tier | Earlier checkpoint, 40.5M | **Submitted, 58.4M** |
+|---|---|---|
+| 1 Combat | 143 · exit 92% | 142 · exit 93% |
+| 2 Exploration | 128 · exit 70% | 129 · exit 70% |
+| 3 Progression | 150 · exit 65% | **163 · exit 75%** |
+| 4 Gauntlet | 102 · exit 35% | 107 · exit 39% |
+| **Weighted** | 125.7 | **131.3** (+5.7, 95% CI 0.2 to 11.3) |
 
-**Weights now in `submission/`:** the main run's best save, 58.4M decisions. On a second set of 249 episodes with new
-maps it scored 136.6, against 135.8 for the aim run at 61.0M and 132.5 for the 40.5M checkpoint. All three are within
-chance of each other, as were the final checkpoints (71.9M and 72.3M). See [using different models](#using-different-models).
+The table pools two independent sets of 249 episodes. The submitted model scored 126.1 and 136.6 on them, against 118.8
+and 132.5 for the 40.5M checkpoint. It is the checkpoint that scored best on the 27-game test run during training, and it
+is statistically tied with the later checkpoints we compared (62.0M and the final 72.3M).
 
 **Does the agent use its memory?** Yes (ablations of the main run at 34.8M decisions; we trained no no-memory baseline). Wiping all memory at every step costs **50 points** (95% CI 36 to 65). Zeroing only
 the slot readout costs **10 points** (95% CI 1 to 20), mostly in exploration and progression, which is where remembering
@@ -50,8 +50,8 @@ places should matter.
 
 ![Memory ablation](docs/brief/memory_ablation.png)
 
-**Known weaknesses:** switch exits (31–52% exit rate, compared with 61–100% for walk-over exits, measured on the 40.5M model), deaths in tier 4 (36–41% of episodes),
-and a low kill rate (about 15% of enemies).
+**Known weaknesses:** switch exits (31–52% exit rate, compared with 61–100% for walk-over exits, measured on the 40.5M model), deaths in tier 4 (46% of episodes),
+and a low kill rate (about 14% of enemies).
 
 ## Setup
 
@@ -108,7 +108,6 @@ checkpoint has already trained.
 ```bash
 mkdir -p runs/more && cp runs/full/best.pt runs/more/ckpt_latest.pt                              # start a copy
 uv run python -m training.train --config configs/full.yaml --run-name more --set max_hours=16    # keep training it
-uv run python -m training.train --config configs/asus_aim.yaml --run-name more --set max_hours=16  # or: with aiming and switch practice
 ```
 
 Only training checkpoints can be continued. The model files in git hold the network alone, without the optimiser or critic.
@@ -118,12 +117,11 @@ Only training checkpoints can be continued. The model files in git hold the netw
 Each file in `configs/` is one experiment ([which is which](training/README.md#configs)).
 
 ```bash
-uv run python -m training.train --config configs/asus_aim.yaml       # damage reward and more switch exits
 uv run python -m training.train --config configs/gru_baseline.yaml   # no spatial memory (not run by us)
 uv run python -m training.train --config configs/memory_k64.yaml     # 64 memory slots (not run by us)
 ```
 
-### 5. Train on other laptops over SSH
+### 5. Train on another laptop over SSH
 
 Set up SSH first ([docs/TRAINING.md](docs/TRAINING.md)). Replace `acer` with your SSH alias.
 
@@ -143,12 +141,11 @@ The agent always loads `submission/weights/model.pt`. Earlier versions of that f
 
 | Commit | Model | Decisions | File hash starts |
 |---|---|---|---|
-| `c6dbfd5` | main run, best save | 58.4M | `a5b6f43e` |
-| `a7b9bcc` | aim run | 61.0M | `f4bc20e4` |
-| `9e9a299` | main run | 40.5M | `824eefb4` |
-| `f00a8f1` | main run | 24.9M | `80b3fc46` |
+| `c6dbfd5` | best checkpoint (**submitted**) | 58.4M | `a5b6f43e` |
+| `9e9a299` | earlier checkpoint | 40.5M | `824eefb4` |
+| `f00a8f1` | earlier checkpoint | 24.9M | `80b3fc46` |
 
-All four sample their actions at temperature 0.5.
+All three come from the same training run and sample their actions at temperature 0.5.
 
 ### Get an earlier model
 
@@ -156,7 +153,7 @@ This needs the full history (not a `--depth 1` clone).
 
 ```bash
 mkdir -p runs/models                                                                      # a folder git ignores
-git cat-file --filters a7b9bcc:submission/weights/model.pt > runs/models/aim_61M.pt       # the aim model
+git cat-file --filters f00a8f1:submission/weights/model.pt > runs/models/main_24M.pt      # the 24.9M model
 git cat-file --filters 9e9a299:submission/weights/model.pt > runs/models/main_40M.pt      # the 40.5M model
 shasum -a 256 runs/models/*.pt                                                            # compare with the table
 ```
@@ -165,12 +162,12 @@ shasum -a 256 runs/models/*.pt                                                  
 
 ```bash
 uv run python -m evaluation.run_heldout                                                   # the installed model, 27 games
-uv run python -m evaluation.run_heldout --weights runs/models/aim_61M.pt                  # another model file
-uv run python -m evaluation.run_heldout --weights runs/models/aim_61M.pt --maps-per-tier 12 --episodes 3   # more games, steadier score
-uv run python -m evaluation.run_heldout --weights runs/models/aim_61M.pt --variety 1      # maps with steps and ledges
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt                  # another model file
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --maps-per-tier 12 --episodes 3   # more games, steadier score
+uv run python -m evaluation.run_heldout --weights runs/models/main_40M.pt --variety 1      # maps with steps and ledges
 uv run python -m evaluation.run_heldout --ckpt runs/full/best.pt --temperature 0.5        # a training checkpoint
-uv run python tools/viz_topdown.py --weights runs/models/aim_61M.pt --tier 3 --out episode.png   # top-down picture of one game
-uv run python tools/watch.py --ckpt runs/models/aim_61M.pt                                # watch it play (uses temperature 1.0)
+uv run python tools/viz_topdown.py --weights runs/models/main_40M.pt --tier 3 --out episode.png   # top-down picture of one game
+uv run python tools/watch.py --ckpt runs/models/main_40M.pt                                # watch it play (uses temperature 1.0)
 ```
 
 Compare models on the same options only. A 27-game score can swing by about 20 points, so small gaps mean little.
@@ -178,7 +175,7 @@ Compare models on the same options only. A 27-game score can swing by about 20 p
 ### Install a model
 
 ```bash
-cp runs/models/aim_61M.pt submission/weights/model.pt                       # use a downloaded model
+cp runs/models/main_40M.pt submission/weights/model.pt                       # use a downloaded model
 uv run python -m training.export --ckpt runs/full/best.pt --temperature 0.5 # or export a checkpoint (the default temperature is 1.0)
 uv run python validate.py                                                   # official checks
 uv run python validate.py --map path/to/map.wad:MAP01                       # try it on your own map

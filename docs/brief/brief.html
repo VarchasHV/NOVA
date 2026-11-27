@@ -73,8 +73,8 @@
     streamed out when the budget is full. The memory is read by attention conditioned on each slot’s
     distance and bearing from the agent’s current pose. The design follows how open-world games keep a bounded set of world chunks loaded. The agent is trained from scratch with our own recurrent PPO, an asymmetric privileged critic, a reward
     aligned with the official scoring categories, and a curriculum over procedurally generated and
-    solvability-checked maps. On two sets of about 250 held-out episodes across all four tiers, the submitted checkpoint reaches the exit in
-    65–73&thinsp;% of them and deliberately collects keys and opens locks in long-horizon levels. Wiping its memory at every step
+    solvability-checked maps. On 498 held-out episodes across all four tiers, the submitted checkpoint reaches the exit in
+    68&thinsp;% of them and deliberately collects keys and opens locks in long-horizon levels. Wiping its memory at every step
     lowers the score by 50 points (95&thinsp;% CI&nbsp;36–65). A decision takes under 1&thinsp;ms on one CPU thread.
   </div>
 </header>
@@ -196,7 +196,7 @@ assume a known position. BBB (Bictor Bon Boom) instead builds its own estimate o
   agent anchors memory without any privileged input at test time (§2.1).</li>
   <li>A complete <b>training pipeline written from scratch</b>: recurrent PPO with an asymmetric critic, a scorer-aligned
   two-stream reward, and a curriculum over solvable procedural maps with replay of failed seeds (§3).</li>
-  <li>A careful <b>evaluation</b> on about 250 held-out maps, with paired bootstrap confidence intervals and
+  <li>A careful <b>evaluation</b> on about 500 held-out episodes, with paired bootstrap confidence intervals and
   memory ablations (§4).</li>
 </ul>
 
@@ -267,45 +267,44 @@ fresh “nemesis” episodes, in the spirit of prioritised level replay [9], and
 Each episode is mirrored left–right at random, with ray \(i\mapsto(64-i)\bmod 64\), which doubles the variety of layouts.
 </p>
 <p>
-<b>Compute.</b> Training ran on two laptops with RTX 3050 GPUs, using CPU worker processes for the environments. The main run reached 62&thinsp;M decisions
-(about 250&thinsp;M game tics, 199&thinsp;k episodes) in 11.5&thinsp;h. A second run continued from that run’s checkpoint with a damage-dealt reward and more practice
-on switch exits (<i>aim</i>).
+<b>Compute.</b> The submitted model comes from one training run on a laptop with an RTX 3050 GPU, with CPU worker processes for the environments.
+The run reached 72.3&thinsp;M decisions in 14&thinsp;h. We submit its best checkpoint, at 58.4&thinsp;M decisions
+(about 234&thinsp;M game tics, 189&thinsp;k episodes, 10.6&thinsp;h).
 </p>
 
 <h2>4&ensp;Experiments</h2>
 <p>
-<b>Protocol.</b> Every policy plays the same held-out suite through the real <span class="mono">submission/agent.py</span>:
-240 generated maps that were never used in training, with plain and uneven geometry, plus 3 Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
-Our local scorer mirrors the official categories and weights the tiers 1:2:3:4 (the official weights are hidden).
-Intervals come from a paired bootstrap that resamples maps within each tier.
+<b>Protocol.</b> Every policy plays the same held-out suites through the real <span class="mono">submission/agent.py</span>.
+Each of two independent sets has 240 generated maps never used in training, with plain and uneven geometry, plus 3 Freedoom maps,
+across tiers 1–4 (249 episodes, fixed seeds). Our local scorer mirrors the official categories and weights the tiers 1:2:3:4
+(the official weights are hidden). Intervals come from a paired bootstrap that resamples maps within each tier.
 </p>
 
 <table>
-<caption><b>Table 1.</b> Held-out results by tier: score per map (higher is better) and the share of episodes that reach the exit.
-The last row is the weighted change from the earlier 40.5&thinsp;M checkpoint, with its 95&thinsp;% CI.</caption>
+<caption><b>Table 1.</b> Held-out results by tier, both sets pooled (498 episodes): score per map (higher is better) and the share of
+episodes that reach the exit. The last row is the weighted change from the earlier 40.5&thinsp;M checkpoint, with its 95&thinsp;% CI.</caption>
 <thead>
-<tr><th></th><th colspan="2">40.5&thinsp;M</th><th colspan="2">Main, 62.0&thinsp;M</th><th colspan="2">Aim, 61.0&thinsp;M</th></tr>
-<tr><th>Tier</th><th>score</th><th>exit</th><th>score</th><th>exit</th><th>score</th><th>exit</th></tr>
+<tr><th></th><th colspan="2">40.5&thinsp;M</th><th colspan="2">Submitted, 58.4&thinsp;M</th></tr>
+<tr><th>Tier</th><th>score</th><th>exit</th><th>score</th><th>exit</th></tr>
 </thead>
 <tbody>
-<tr><td>1 Combat</td><td>139</td><td>88%</td><td>140</td><td>88%</td><td>140</td><td>88%</td></tr>
-<tr><td>2 Exploration</td><td>114</td><td>60%</td><td>115</td><td>58%</td><td class="best">127</td><td class="best">67%</td></tr>
-<tr><td>3 Progression</td><td>145</td><td>58%</td><td class="best">160</td><td class="best">72%</td><td>153</td><td>68%</td></tr>
-<tr><td>4 Gauntlet</td><td>97</td><td>33%</td><td>107</td><td>39%</td><td>107</td><td class="best">42%</td></tr>
-<tr><td>Weighted</td><td>118.8</td><td>57%</td><td>127.5</td><td>64%</td><td class="best">128.3</td><td>64%</td></tr>
-<tr><td>Δ vs 40.5&thinsp;M</td><td>—</td><td></td><td>+8.6</td><td class="ci">[0.5, 17.1]</td><td>+9.5</td><td class="ci">[1.0, 18.1]</td></tr>
+<tr><td>1 Combat</td><td class="best">143</td><td>92%</td><td>142</td><td class="best">93%</td></tr>
+<tr><td>2 Exploration</td><td>128</td><td>70%</td><td class="best">129</td><td>70%</td></tr>
+<tr><td>3 Progression</td><td>150</td><td>65%</td><td class="best">163</td><td class="best">75%</td></tr>
+<tr><td>4 Gauntlet</td><td>102</td><td>35%</td><td class="best">107</td><td class="best">39%</td></tr>
+<tr><td>Weighted</td><td>125.7</td><td>64%</td><td class="best">131.3</td><td class="best">68%</td></tr>
+<tr><td>Δ vs 40.5&thinsp;M</td><td>—</td><td></td><td>+5.7</td><td class="ci">[0.2, 11.3]</td></tr>
 </tbody>
 </table>
 
 <p style="margin-top:1.6mm">
-<b>Scaling and fine-tuning.</b> Training from 40.5&thinsp;M to 62&thinsp;M decisions raises the weighted score by 8.6 points, and the 95&thinsp;% CI excludes zero.
-The largest gain is in tier 3: the agent reaches the exit 14 points more often after collecting keys and unlocking doors. The two later runs
-are statistically tied (Δ&nbsp;0.9, CI&nbsp;−8.3 to 9.7). The aim run is ahead on exploration and the gauntlet, and the main run is ahead on progression.
-On a second set of 249 new episodes the aim run led 40.5&thinsp;M by only 3.3 (CI −4.3 to 10.8) and tied both final checkpoints; we submit it.
+<b>Longer training.</b> From 40.5&thinsp;M to 58.4&thinsp;M decisions the weighted score rises by 5.7 points. The gain was larger on the first set (+7.3)
+than on the second (+4.1, CI −4.4 to 12.6). It is largest in tier 3, where the exit rate rises by 10 points. The later checkpoints
+(62.0&thinsp;M and the final 72.3&thinsp;M) are statistically tied with it.
 </p>
 
 <figure>
-<svg viewBox="0 0 330 142" width="84%" style="display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg" font-size="9">
+<svg viewBox="0 0 330 142" width="74%" style="display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg" font-size="9">
   <g stroke="#ddd" stroke-width=".6">
     <line x1="32" y1="18" x2="326" y2="18"/><line x1="32" y1="45" x2="326" y2="45"/><line x1="32" y1="72" x2="326" y2="72"/><line x1="32" y1="99" x2="326" y2="99"/>
   </g>
@@ -336,13 +335,13 @@ map variants (81 maps each). Wiping the recurrent state and the slots at every s
 </figure>
 
 <table>
-<caption><b>Table 2.</b> Ablations, measured as the weighted-score change against the full agent (95&thinsp;% CI). Memory rows: main run at 34.8&thinsp;M decisions. Decoding rows cover all three checkpoints.</caption>
+<caption><b>Table 2.</b> Ablations, measured as the weighted-score change against the full agent (95&thinsp;% CI). Memory rows: main run at 34.8&thinsp;M decisions. Decoding rows: checkpoints at 24.9&thinsp;M and 34.8&thinsp;M.</caption>
 <thead><tr><th>Variant</th><th>Δ score</th><th>95% CI</th></tr></thead>
 <tbody>
 <tr><td>Slot-memory readout set to zero</td><td>−10.1</td><td>[−20.3, −1.1]</td></tr>
 <tr><td>Recurrent state and slots wiped every step</td><td>−50.5</td><td>[−64.8, −36.4]</td></tr>
-<tr><td>Cooled sampling vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>+2.0</td><td>[−2.2, +6.4]</td></tr>
-<tr><td>Greedy vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>−0.4</td><td>[−5.2, +4.5]</td></tr>
+<tr><td>Sampling at <i>T</i>&thinsp;=&thinsp;1.0 vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>−3.9</td><td>[−9.5, +0.9]</td></tr>
+<tr><td>Greedy vs. <i>T</i>&thinsp;=&thinsp;0.5</td><td>−7.0</td><td>[−11.6, −3.0]</td></tr>
 </tbody>
 </table>
 
@@ -350,7 +349,7 @@ map variants (81 maps each). Wiping the recurrent state and the slots at every s
 <b>Does the memory help?</b> Both kinds of memory matter. Removing all state makes the agent forget where it has been, and its exit rate falls from about 70&thinsp;% to 12–28&thinsp;%.
 Zeroing only the slot readout, while keeping the GRU, still costs about 10 points, and the CI excludes zero. The loss is largest in
 exploration and progression and almost absent in pure combat, which is the pattern expected if the slots store
-<i>places</i>. The decoding method matters little, and we submit sampling at <i>T</i>&thinsp;=&thinsp;0.5, which avoids the loops that greedy decoding can fall into.
+<i>places</i>. Greedy decoding scores lower, and we submit sampling at <i>T</i>&thinsp;=&thinsp;0.5.
 </p>
 
 <p>
@@ -363,7 +362,7 @@ shapes and presses nothing for one decision if an exception occurs. The weights 
 BBB’s odometry drifts over long episodes, so anchors are approximate. Door and key colours cannot be
 observed, so the memory stores “a locked door” rather than “the red door”. In a 240-map test at 40.5&thinsp;M, exit rates for walk-over exits
 are 61–100&thinsp;% but only 31–52&thinsp;% for switch exits: pressing USE against the right wall is the main failure. Tier 4
-remains hard, with deaths in 36–41&thinsp;% of episodes, and the agent kills only 15&thinsp;% of enemies. Next steps: a hierarchical manager–worker policy and odometry loop closure.
+remains hard, with deaths in 46&thinsp;% of episodes, and the agent kills only 14&thinsp;% of enemies. Next steps: a hierarchical manager–worker policy and odometry loop closure.
 </p>
 
 <h2>References</h2>

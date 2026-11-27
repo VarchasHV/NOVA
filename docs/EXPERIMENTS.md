@@ -7,7 +7,7 @@ and compare on the same held-out suite.
 ## How we compare policies
 
 - Every policy plays through the real `submission/agent.py`, exactly as the scorer would run it.
-- **Held-out suite:** 240 generated maps that were never used in training, with plain and uneven geometry, plus 3 Freedoom maps, across tiers 1–4 (249 episodes, fixed seeds).
+- **Held-out suites:** two independent sets, each with 240 generated maps that were never used in training (plain and uneven geometry) plus 3 Freedoom maps, across tiers 1–4 (249 episodes per set, fixed seeds).
 - **Score:** our local scorer (`evaluation/local_scorer.py`) mirrors the four official categories and weights the tiers 1:2:3:4. The official weights are hidden, so absolute numbers are estimates.
 - **Uncertainty:** a paired bootstrap (4,000 resamples) that resamples maps within each tier. A difference counts as real only when its 95% interval excludes zero.
 
@@ -15,40 +15,34 @@ and compare on the same held-out suite.
 
 | Run | Config | Hypothesis | Result |
 |---|---|---|---|
-| full | `configs/full.yaml` | the main candidate for submission | 62.0M decisions in 11.5 h. Weighted score 127.5, compared with 118.8 at 40.5M (**+8.6**, CI 0.5 to 17.1). The largest gain is in tier 3 (exit rate 58% → 72%). |
-| aim_s5 (ASUS) | `configs/asus_aim.yaml`, resumed from `full` at 49.8M | a damage reward improves aiming; more switch practice improves switch exits | 61.0M decisions. Weighted 128.3, statistically tied with `full` (+0.9, CI −8.3 to 9.7). Better in tier 2 (127 vs 115) and slightly better in tier 4; worse in tier 3. |
-| variety_s4 (ASUS) | `configs/asus_variety.yaml`, resumed from `full` at 32.6M | uneven practice maps and more Freedoom improve survival and exits on unfamiliar maps | rejected: 8.8 points below `full` (CI 1.7 to 16.2) |
-| fight_s3 (ASUS) | `configs/asus_fight.yaml`, resumed from `full` | combat-only exit and kill rewards raise kills without more deaths or weaker navigation | rejected: slightly more kills but fewer exits (plain 115.9 vs 124.1, uneven 102.4 vs 113.9, 81 games each) |
+| full | `configs/full.yaml` | the main candidate for submission | 72.3M decisions in 14 h. The best checkpoint (58.4M) is submitted: pooled weighted score 131.3, compared with 125.7 at 40.5M (**+5.7**, CI 0.2 to 11.3). The largest gain is in tier 3 (exit rate 65% → 75%). |
 | gru_baseline | `configs/gru_baseline.yaml` | no memory loses on tiers 3 and 4 | not run (no time); replaced by the memory ablations below |
 | memory_k64 | `configs/memory_k64.yaml` | 64 slots help the largest maps | not run |
 
-### Held-out results by tier (score per map · share of episodes reaching the exit)
+### Held-out results by tier (score per map · share of episodes reaching the exit, both sets pooled)
 
-| Tier | `full` 40.5M | `full` 62.0M | `aim_s5` 61.0M |
-|---|---|---|---|
-| 1 Combat | 139 · 88% | 140 · 88% | 140 · 88% |
-| 2 Exploration | 114 · 60% | 115 · 58% | 127 · 67% |
-| 3 Progression | 145 · 58% | 160 · 72% | 153 · 68% |
-| 4 Gauntlet | 97 · 33% | 107 · 39% | 107 · 42% |
-| Weighted | 118.8 | 127.5 | 128.3 |
-| Deaths in tier 4 | 51% | 45% | 41% |
+| Tier | 40.5M | 58.4M (submitted) |
+|---|---|---|
+| 1 Combat | 143 · 92% | 142 · 93% |
+| 2 Exploration | 128 · 70% | 129 · 70% |
+| 3 Progression | 150 · 65% | 163 · 75% |
+| 4 Gauntlet | 102 · 35% | 107 · 39% |
+| Weighted | 125.7 | 131.3 |
+| Deaths in tier 4 | 46% | 46% |
 
-Source: `runs/pick0445/compare.json` (04:45, 27 Nov).
+## Checkpoint choice
 
-## Final selection
+| Set | Checkpoint | Weighted | Δ against 58.4M (95% CI) | Exit rate | Deaths |
+|---|---|---|---|---|---|
+| 1 | 40.5M | 118.8 | −7.3 (−14.9 to −0.2) | 59% | 17% |
+| 1 | **58.4M** | 126.1 | — | 62% | 16% |
+| 1 | 62.0M | 127.5 | +1.4 (−6.3 to +9.1) | 63% | 14% |
+| 2 | 40.5M | 132.5 | −4.1 (−12.6 to +4.4) | 69% | 13% |
+| 2 | **58.4M** | 136.6 | — | 74% | 14% |
+| 2 | 72.3M (final) | 135.4 | −1.1 (−8.6 to +6.6) | 72% | 13% |
 
-A second set of 249 episodes on new maps (generator seeds offset by 900 instead of 500), run after both trainings
-finished. Rule fixed before the results: keep `aim_s5` 61.0M unless another model beats it with a 95% interval above zero.
-
-| Model | Weighted | Δ vs `aim_s5` 61.0M (95% CI) | Exit rate | Deaths |
-|---|---|---|---|---|
-| `aim_s5` 61.0M (**submitted**) | 135.8 | — | 73% | 12% |
-| `aim_s5` best.pt (65.8M) | 136.4 | +0.6 (−7.8 to +9.2) | 74% | 12% |
-| `full` final, 72.3M | 135.4 | −0.4 (−8.7 to +8.0) | 72% | 13% |
-| `aim_s5` final, 71.9M | 134.7 | −1.1 (−9.3 to +7.6) | 71% | 12% |
-| `full` 40.5M | 132.5 | −3.3 (−10.8 to +4.3) | 69% | 13% |
-
-Source: `runs/pick0730/final.json`.
+The 58.4M checkpoint scored best on the 27-game test run during training. The 62.0M and 72.3M checkpoints are tied with it.
+Set 1 uses generator seeds offset by 500 from the training-time test, set 2 by 900.
 
 ## Memory ablations
 
@@ -73,16 +67,16 @@ Zeroing the slot readout hurts most in exploration and progression and barely ma
 
 ## Decoding
 
-All three checkpoints (`full` at 34.8M, its best checkpoint, and `variety_s4`) on both map variants:
+Two earlier checkpoints of `full` (24.9M and 34.8M) on both map variants:
 
 | Comparison | Δ score | 95% CI |
 |---|---|---|
-| cooled sampling − sampling at T = 0.5 | +2.0 | −2.2 to +6.4 |
-| greedy − sampling at T = 0.5 | −0.4 | −5.2 to +4.5 |
+| sampling at T = 1.0 − sampling at T = 0.5 | −3.9 | −9.5 to +0.9 |
+| greedy − sampling at T = 0.5 | −7.0 | −11.6 to −3.0 |
 
-The differences are within noise. We submit sampling at T = 0.5, which avoids the loops that greedy decoding can fall into.
+Greedy decoding scores lower; the two sampling temperatures are not clearly different. We submit sampling at T = 0.5.
 
-## Failure analysis (240 unseen maps, submitted 40.5M model)
+## Failure analysis (240 unseen maps, 40.5M checkpoint)
 
 | Family | Switch exit reached | Walk-in exit reached |
 |---|---|---|

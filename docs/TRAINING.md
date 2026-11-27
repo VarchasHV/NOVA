@@ -1,17 +1,13 @@
-# Training on the GPU laptops
+# Training on a GPU laptop
 
-Training runs on laptops with an NVIDIA GPU. The Mac starts, watches, stops and collects the runs
-over SSH with [`tools/remote.sh`](../tools/remote.sh). Each laptop trains its own run: PyTorch cannot
-use another machine's GPU, and the training code does not split one run across machines.
+Training runs on a laptop with an NVIDIA GPU. The Mac starts, watches, stops and collects the runs
+over SSH with [`tools/remote.sh`](../tools/remote.sh).
 
-| Alias | Machine | OS | GPU memory | Planned run |
+| Alias | Machine | OS | GPU memory | Run |
 |---|---|---|---|---|
-| `acer` | Acer ALG, i5-13500H | CachyOS (fish shell) | 6 GB | `configs/full.yaml` (submission candidate) |
-| `asus` | ASUS TUF A15, Ryzen 7 7445HS | Ubuntu 24.04 | 4 GB | `configs/gru_baseline.yaml` (no-memory ablation) |
+| `acer` | Acer ALG, i5-13500H | CachyOS (fish shell) | 6 GB | `configs/full.yaml` (the submitted model) |
 
-If the speed check says the ASUS is faster, swap the two runs.
-
-## 1. Packages on each laptop
+## 1. Packages on the laptop
 
 **CachyOS**
 
@@ -39,20 +35,20 @@ after any kernel or driver update.
 **Not needed:** a system CUDA toolkit, cuDNN, conda, a system Python or Docker. `uv sync` installs
 Python 3.13, PyTorch 2.15.0 with its CUDA libraries, and ViZDoom 1.3.3.
 
-## 2. Keep the laptops awake
+## 2. Keep the laptop awake
 
-On both laptops:
+On the laptop:
 
 ```bash
 sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 ```
 
-Undo later with `unmask`. Keep them plugged in, on the performance power mode, with the vents clear
-and browsers closed (each has 16 GB RAM).
+Undo later with `unmask`. Keep it plugged in, on the performance power mode, with the vents clear
+and browsers closed.
 
 ## 3. SSH from the Mac
 
-Find each laptop's Wi-Fi address with `ip -4 -br addr`. Addresses can change after a reconnect.
+Find the laptop's Wi-Fi address with `ip -4 -br addr`. Addresses can change after a reconnect.
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/nova_train      # once
@@ -62,15 +58,8 @@ Add to `~/.ssh/config`:
 
 ```
 Host acer
-  HostName <acer address>
-  User unhealthycoder
-  IdentityFile ~/.ssh/nova_train
-  IdentitiesOnly yes
-  ServerAliveInterval 30
-
-Host asus
-  HostName <asus address>
-  User charlie
+  HostName <laptop address>
+  User <user name>
   IdentityFile ~/.ssh/nova_train
   IdentitiesOnly yes
   ServerAliveInterval 30
@@ -80,18 +69,16 @@ Install the key (asks for the laptop's password once), then test:
 
 ```bash
 ssh-copy-id -i ~/.ssh/nova_train.pub acer
-ssh-copy-id -i ~/.ssh/nova_train.pub asus
-ssh acer nvidia-smi && ssh asus nvidia-smi
+ssh acer nvidia-smi
 ```
 
 ## 4. Run training (on the Mac, from the repository root)
 
 ```bash
 tools/remote.sh setup acer                      # copies code, installs packages, checks speed
-tools/remote.sh setup asus
 ```
 
-The first setup downloads several GB on each laptop. If it is interrupted, run it again. It must end
+The first setup downloads several GB. If it is interrupted, run it again. It must end
 with `READY`; note the `recommended: --set num_workers=N` line.
 
 Smoke test (up to 400k decisions or 1 hour):
@@ -106,7 +93,6 @@ Real runs. `H` is the hours left minus about 3 for export and submission:
 
 ```bash
 tools/remote.sh start acer configs/full.yaml --set num_workers=N --set max_hours=H
-tools/remote.sh start asus configs/gru_baseline.yaml --set num_workers=N --set max_hours=H
 ```
 
 Training keeps running if the Mac sleeps or leaves the network.
@@ -115,21 +101,12 @@ Training keeps running if the Mac sleeps or leaves the network.
 |---|---|
 | `tools/remote.sh status <host>` | GPU load, memory and the last log lines |
 | `tools/remote.sh stop <host>` | saves a checkpoint and stops |
-| `tools/remote.sh board <host> [port]` | TensorBoard at `http://localhost:16006`; use another port for the second laptop |
+| `tools/remote.sh board <host> [port]` | TensorBoard at `http://localhost:16006` |
 | `tools/remote.sh fetch <host>` | copies the runs to `runs/<host>/` on the Mac; do this every few hours as a backup |
 | `tools/remote.sh sync <host>` | copies code changes (only while that laptop is idle) |
 
 **Resume:** run the same `start` command again, with the same `--set` options. `max_hours` is the total
 for the run, including time already trained.
-
-**Move a run to the other laptop** (for example from the Acer to the ASUS):
-
-```bash
-tools/remote.sh fetch acer                      # skip if the Acer is unreachable; use the last copy
-tools/remote.sh stop asus
-rsync -az runs/acer/full/ asus:nova-train/runs/full/
-tools/remote.sh start asus configs/full.yaml --set num_workers=N --set max_hours=H
-```
 
 ## 5. Export and submit (on the Mac)
 
