@@ -1,7 +1,7 @@
 """Watch the agent play in a game window, using the newest checkpoint from a training laptop.
 
     uv run python tools/watch.py acer                  # newest Acer checkpoint, one map after another
-    uv run python tools/watch.py asus --best           # the best-scoring ASUS checkpoint
+    uv run python tools/watch.py acer --best           # the best-scoring checkpoint
     uv run python tools/watch.py acer --tier 1         # only combat maps (2 explore, 3 keys, 4 gauntlet)
     uv run python tools/watch.py acer --mode greedy    # no randomness in the choice of actions
     uv run python tools/watch.py --ckpt path/to.pt     # a checkpoint already on this computer
@@ -90,7 +90,7 @@ def newest_on_laptop(host: str, name: str, destination: Path) -> Path | None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("host", nargs="?", help="laptop alias from ~/.ssh/config, for example acer or asus")
+    ap.add_argument("host", nargs="?", help="laptop alias from ~/.ssh/config, for example acer")
     ap.add_argument("--ckpt", help="play this local checkpoint instead of fetching one")
     ap.add_argument("--best", action="store_true", help="fetch best.pt instead of the newest checkpoint")
     ap.add_argument("--tier", type=int, choices=sorted(TIERS), help="only maps of this tier")

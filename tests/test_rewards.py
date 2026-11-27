@@ -55,26 +55,6 @@ def test_finishing_dominates_farming():
     assert c.grid * 300 * 1.0 < finishing + 2
 
 
-def test_combat_only_rewards_leave_other_maps_unchanged(tmp_path):
-    env = TrainEnv(corridor(tmp_path / "e.wad"), "MAP01")
-    env.reset(seed=0)
-    ws = env.world_state()
-    cfg = RewardConfig(combat_exit_floor=0.5, combat_kill_scale=2.5)
-
-    def paid(config, family, kills):
-        tracker = RewardTracker(config, ws, env.meta, {"monsters": 4, "keys": 0, "locks": 0}, family)
-        r = tracker.step({**ws, "kills": ws["kills"] + kills, "exit_reached": True})[2]
-        return r["exit"], r["kill"]
-
-    full, one = paid(RewardConfig(), "combat", 0)[0], RewardConfig().kill
-    assert paid(cfg, "combat", 0) == pytest.approx((0.5 * full, 0.0))
-    assert paid(cfg, "combat", 2) == pytest.approx((0.75 * full, 2 * 2.5 * one))
-    assert paid(cfg, "combat", 4) == pytest.approx((full, 4 * 2.5 * one))
-    assert paid(cfg, "gauntlet", 2) == pytest.approx((full, 2 * one))
-    assert paid(RewardConfig(), "combat", 2) == pytest.approx((full, 2 * one))
-    env.close()
-
-
 def test_death_costs_more_when_early(tmp_path):
     env = TrainEnv(corridor(tmp_path / "d.wad"), "MAP01")
     env.reset(seed=0)
@@ -99,23 +79,3 @@ def test_sector_reward_is_capped(tmp_path):
     for s in range(1, 600):
         tracker.step({**ws, "sector": s % 500, "x": ws["x"] + 200 * np.sin(s), "y": ws["y"]})
     assert tracker.totals_by_component["sector"] <= cfg.sector_cap + 1e-9
-
-
-def test_hit_and_wall_trying_rewards_are_off_by_default_capped_and_paid_once(tmp_path):
-    env = TrainEnv(corridor(tmp_path / "h.wad"), "MAP01")
-    env.reset(seed=0)
-    ws = env.world_state()
-    assert ws["damage_dealt"] == 0.0
-    totals = {"monsters": 0, "keys": 0, "locks": 0}
-    off = RewardTracker(RewardConfig(), ws, env.meta, totals).step({**ws, "damage_dealt": 100.0}, True)[2]
-    assert off["hit"] == 0.0 and off["use_spot"] == 0.0
-
-    tracker = RewardTracker(RewardConfig(hit=0.01, hit_cap=1.5, use_spot=0.5, use_spot_cap=0.8), ws, env.meta, totals)
-    assert tracker.step({**ws, "damage_dealt": 100.0})[2]["hit"] == pytest.approx(1.0)
-    assert tracker.step({**ws, "damage_dealt": 100.0})[2]["hit"] == 0.0  # only new damage counts
-    assert tracker.step({**ws, "damage_dealt": 300.0})[2]["hit"] == pytest.approx(0.5)  # capped
-    assert tracker.step(ws, True)[2]["use_spot"] == pytest.approx(0.5)
-    assert tracker.step(ws, True)[2]["use_spot"] == 0.0  # same place and heading
-    assert tracker.step({**ws, "angle": ws["angle"] + 90.0}, True)[2]["use_spot"] == pytest.approx(0.3)  # capped
-    assert tracker.step({**ws, "x": ws["x"] + 200.0}, True)[2]["use_spot"] == 0.0
-    env.close()

@@ -108,14 +108,3 @@ def test_varied_maps_load_and_ledges_block_movement_but_not_sight(tmp_path):
         env.step(np.zeros(9, np.int8))
     env.close()
     assert ledge_lines > 0
-
-
-def test_switch_share_changes_only_what_it_should():
-    seeds = range(200)
-    a = [generate("explore", 2, s) for s in seeds]
-    assert all(generate("explore", 2, s, 0.0, 0.5).switch == lv.switch for s, lv in zip(seeds, a))
-    many = [generate("explore", 2, s, 0.0, 0.85) for s in seeds]
-    assert 0.4 < np.mean([lv.switch is not None for lv in a]) < 0.6
-    assert 0.75 < np.mean([lv.switch is not None for lv in many]) < 0.95
-    assert all(validate_level(lv) == [] for lv in many)
-    assert all(generate("explore", 0, s, 0.0, 1.0).switch is None for s in range(20))  # the first level walks in

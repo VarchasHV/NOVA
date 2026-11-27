@@ -1,6 +1,6 @@
 """Live training page. Run on the Mac, then open http://localhost:8765
 
-    python3 tools/dashboard.py                      # laptops "acer" and "asus" over SSH, plus this Mac
+    python3 tools/dashboard.py                      # the training laptop "acer" over SSH, plus this Mac
     python3 tools/dashboard.py --hosts mac          # only the runs on this computer
 
 Only the Python standard library is used. The server listens on this computer only.
@@ -158,7 +158,7 @@ def serve(hosts: list[str], port: int, every: float) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--hosts", nargs="+", default=["acer", "asus", "mac"], help="up to 3: SSH aliases, or 'mac' for this computer")
+    ap.add_argument("--hosts", nargs="+", default=["acer", "mac"], help="up to 3: SSH aliases, or 'mac' for this computer")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--every", type=float, default=20.0, help="seconds between readings")
     args = ap.parse_args(argv)

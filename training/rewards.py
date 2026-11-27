@@ -37,34 +37,19 @@ class RewardConfig:
     stagnation_radius: float = 64.0
     grid: float = 0.05  # intrinsic
     door_reach: float = 192.0  # only credit doors that open near the player
-    # Combat practice maps only; the defaults change nothing.
-    combat_exit_floor: float = 1.0  # share of the exit reward for leaving with no kills (all kills: the full reward)
-    combat_kill_scale: float = 1.0  # multiplies the kill reward and its cap
-    # Practice signals for aiming and for switches; the defaults (0) leave them off.
-    hit: float = 0.0  # per HP of damage the player deals
-    hit_cap: float = 3.0
-    use_spot: float = 0.0  # for pressing USE against a wall at a place and heading not tried before
-    use_spot_cap: float = 1.0
 
 
-COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "hit", "use_spot", "damage", "death", "time",
-              "stagnation", "grid")
+COMPONENTS = ("exit", "key", "unlock", "door", "sector", "kill", "damage", "death", "time", "stagnation", "grid")
 
 
 class RewardTracker:
     """Create at episode start with the first world state, then call step() after every action."""
 
-    def __init__(self, cfg: RewardConfig, ws: dict, meta, totals: dict, family: str = ""):
+    def __init__(self, cfg: RewardConfig, ws: dict, meta, totals: dict):
         self.cfg, self.meta, self.totals = cfg, meta, totals
-        combat = family == "combat"
-        self.kill_scale = cfg.combat_kill_scale if combat else 1.0
-        self.exit_floor = cfg.combat_exit_floor if combat else 1.0
         self.keys = ws["keys"].copy()
         self.kills = ws["kills"]
         self.damage = ws["damage_taken"]
-        self.dealt = ws.get("damage_dealt", 0.0)
-        self.tried: set[tuple[int, int, int]] = set()
-        self.hit_paid = self.use_paid = 0.0
         self.opened = set(int(i) for i in ws["door_open"].nonzero()[0])  # already open at start
         self.novelty = EpisodicNovelty()
         self.novelty.new_sector(ws["sector"])
@@ -75,9 +60,8 @@ class RewardTracker:
         self.counts = {"keys": 0, "unlocks": 0, "doors": 0, "exit": 0, "stagnant_steps": 0}
         self.totals_by_component = dict.fromkeys(COMPONENTS, 0.0)
 
-    def step(self, ws: dict, used_on_wall: bool = False) -> tuple[float, float, dict]:
-        """Returns (extrinsic, intrinsic, per-component values). used_on_wall: this action newly
-        pressed USE with a plain wall within reach ahead."""
+    def step(self, ws: dict) -> tuple[float, float, dict]:
+        """Returns (extrinsic, intrinsic, per-component values)."""
         c, r = self.cfg, dict.fromkeys(COMPONENTS, 0.0)
         remaining = max(0.0, 1.0 - ws["tic"] / max(ws["episode_ticks"], 1))
         r["time"] = -c.time
@@ -110,23 +94,9 @@ class RewardTracker:
 
         kills = ws["kills"] - self.kills
         if kills > 0:
-            each, cap = c.kill * self.kill_scale, c.kill_cap * self.kill_scale
-            r["kill"] = max(0.0, min(each * kills, cap - self.kill_paid))
+            r["kill"] = max(0.0, min(c.kill * kills, c.kill_cap - self.kill_paid))
             self.kill_paid += r["kill"]
         self.kills = ws["kills"]
-
-        dealt = ws.get("damage_dealt", 0.0)
-        if dealt > self.dealt:
-            r["hit"] = max(0.0, min(c.hit * (dealt - self.dealt), c.hit_cap - self.hit_paid))
-            self.hit_paid += r["hit"]
-        self.dealt = dealt
-
-        if used_on_wall:  # a switch looks like any wall, so trying walls is how one is found
-            spot = (int(ws["x"] // 64), int(ws["y"] // 64), int(((ws["angle"] + 45.0) % 360.0) // 90.0))
-            if spot not in self.tried:
-                self.tried.add(spot)
-                r["use_spot"] = max(0.0, min(c.use_spot, c.use_spot_cap - self.use_paid))
-                self.use_paid += r["use_spot"]
 
         r["damage"] = -c.damage * max(0.0, min(ws["damage_taken"] - self.damage, 200.0))
         self.damage = ws["damage_taken"]
@@ -135,9 +105,7 @@ class RewardTracker:
             r["death"] = -c.death * (1.0 + 0.5 * remaining)
         if ws["exit_reached"]:
             self.counts["exit"] = 1
-            killed = min(1.0, ws["kills"] / self.totals["monsters"]) if self.totals["monsters"] else 1.0
-            share = self.exit_floor + (1.0 - self.exit_floor) * killed
-            r["exit"] = share * (c.exit + c.exit_health_bonus * min(ws["health"], 100.0) / 100.0 + c.exit_time_bonus * remaining)
+            r["exit"] = c.exit + c.exit_health_bonus * min(ws["health"], 100.0) / 100.0 + c.exit_time_bonus * remaining
 
         self.positions.append((ws["x"], ws["y"]))
         x0, y0 = self.positions[0]

@@ -4,7 +4,7 @@
     uv run python tools/demo.py replay   --late runs/acer/full/best.pt
     uv run python tools/demo.py killcam  --late ...
     uv run python tools/demo.py deaths   --early A.pt --mid B.pt --late C.pt
-    uv run python tools/demo.py curves   --runs runs/acer/full runs/asus/full_s2
+    uv run python tools/demo.py curves   --runs runs/acer/full
 
 Output goes to runs/demo/ (open index.html; works offline). Maps are held-out maps the agent never
 trained on. True positions, walls and enemies are used only for drawing: the agent sees nothing but

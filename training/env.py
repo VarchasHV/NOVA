@@ -12,7 +12,6 @@ import struct
 from dataclasses import dataclass
 
 import numpy as np
-import vizdoom as vd
 
 from doom_env.mapinfo import DOOM_NAMESPACES, load_mapinfo, parse_udmf, udmf_namespace
 from doom_env.sensors import KEY_NAMES, PLAYER_HEIGHT
@@ -153,5 +152,4 @@ class TrainEnv(DoomEnv):
         s["key_positions"] = np.array(keys, np.float64).reshape(-1, 2)
         s["ammo"] = float(self._last_vars[3])
         s["armor"] = float(self._last_vars[1])
-        s["damage_dealt"] = float(self._game.get_game_variable(vd.GameVariable.DAMAGECOUNT))  # by the player
         return s
